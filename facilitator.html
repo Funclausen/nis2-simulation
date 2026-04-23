@@ -95,6 +95,7 @@ window.startSession=function(){
   remove(ref(db,'answers'));
   set(ref(db,'session/resetSignal'),Date.now());
   set(ref(db,'session/activeRound'),0);
+  set(ref(db,'session/state'),'active');
   window.allAnswers={};
   currentRound=0;
   window.expectedParticipants=parseInt(document.getElementById('expected-input').value)||15;
@@ -114,6 +115,7 @@ window.resetSession=function(){
   remove(ref(db,'answers'));
   set(ref(db,'session/resetSignal'),Date.now());
   set(ref(db,'session/activeRound'),0);
+  set(ref(db,'session/state'),'waiting');
   window.allAnswers={};
   showScreen('intro');
 };
@@ -575,7 +577,8 @@ body{font-family:'Montserrat',sans-serif;background:#1A2830;color:#E8F4F6;
         <div class="regel"><div class="regel-n">I</div>I er DataBridges lederteam – Mette, Jakob og Line</div>
         <div class="regel"><div class="regel-n">II</div>Diskuter i gruppen – ét svar per terminal</div>
         <div class="regel"><div class="regel-n">III</div>Der er ingen facit – men der er konsekvenser</div>
-        <div class="regel"><div class="regel-n">IV</div>I har <strong style="color:#80B4BF">ca. 2 minutter per spørgsmål</strong> – 11 spørgsmål over 25 minutter</div>
+        <div class="regel"><div class="regel-n">IV</div>I har ca. <strong style="color:#80B4BF">2 minutter per spørgsmål</strong></div>
+        <div class="regel"><div class="regel-n">V</div>11 spørgsmål – simulationen tager ca. 25 minutter</div>
       </div>
       <div class="ic-box">
         <div class="ic-box-t">Sådan virker det</div>
@@ -688,17 +691,6 @@ function showScreen(n){
   document.getElementById('si').classList.toggle('active',n==='intro');
   document.getElementById('sl').classList.toggle('active',n==='live');
 }
-function showPanel(n){
-  ['chart','debrief','overview'].forEach(p=>{
-    const el=document.getElementById('panel-'+p);
-    if(!el) return;
-    const show=p===n;
-    el.style.display=show?(p==='chart'?'flex':'flex'):'none';
-    if(show&&p!=='chart') el.style.flexDirection='column';
-  });
-  if(n==='debrief') renderDebrief();
-  if(n==='overview') renderOverview();
-}
 
 const ROUND_META=[
   {time:"Mandag kl. 08.12",module:"Fase 1 – Opdagelse og første respons",lawRef:"§ 7",
@@ -793,85 +785,283 @@ function toggleNotes(){
 }
 
 // ── DEBRIEF ───────────────────────────────────────────────────────────────
+// ── DEBRIEF STATE ─────────────────────────────────────────────────────────
+let debriefStep = 1; // 1=spejling, 2=fordybning, 3=forpligtelse
+let debriefFaseIdx = 0; // hvilken fase vi er på i trin 2
+
+function showPanel(n){
+  ['chart','debrief','overview'].forEach(p=>{
+    const el=document.getElementById('panel-'+p);
+    if(!el) return;
+    el.style.display=p===n?(p==='chart'?'flex':'flex'):'none';
+    if(p===n&&p!=='chart') el.style.flexDirection='column';
+  });
+  if(n==='debrief'){debriefStep=1;debriefFaseIdx=0;renderDebrief();}
+  if(n==='overview') renderOverview();
+}
+
 function renderDebrief(){
   const ans=window.allAnswers||{};
   const all=Object.values(ans).flatMap(r=>Object.values(r||{}));
   const tot=all.length;
+
+  if(debriefStep===1) renderDebriefSpejling(ans, tot);
+  else if(debriefStep===2) renderDebriefFordybning(ans);
+  else renderDebriefForpligtelse();
+}
+
+// ── TRIN 1: SPEJLING ──────────────────────────────────────────────────────
+function renderDebriefSpejling(ans, tot){
+  const all=Object.values(ans).flatMap(r=>Object.values(r||{}));
   const good=all.filter(e=>e.quality==='good').length;
   const bad=all.filter(e=>e.quality==='bad').length;
   const neu=all.filter(e=>e.quality==='neutral').length;
   const pG=tot?Math.round(good/tot*100):0;
   const pB=tot?Math.round(bad/tot*100):0;
+  const pN=tot?Math.round(neu/tot*100):0;
 
-  // Mest polariserende
-  let mp={round:0,label:'',pct:0,text:''};
-  ROUND_META.forEach((r,ri)=>{
+  // Find top 3 mest polariserende runder (højest % kritiske)
+  const ranked = ROUND_META.map((r,ri)=>{
     const re=Object.values(ans[ri]||{});
-    if(!re.length)return;
-    const p=Math.round(re.filter(e=>e.quality==='bad').length/re.length*100);
-    if(p>mp.pct)mp={round:ri+1,label:r.module,pct:p,text:r.debrief};
-  });
-
-  const FASER=[
-    {navn:'Fase 1–2: Opdagelse, ISMS og beredskab',runder:[0,1,2,3],ref:'§ 6 · § 7',
-     sp:['Hvem ejer ledelsesansvaret fra minut ét i jeres organisation?','Har I en aktivoversigt og risikovurdering som ledelsen kender og har godkendt?','Er beredskabsplanen øvet – eller kun skrevet ned?']},
-    {navn:'Fase 3–5: Leverandør, frister og kommunikation',runder:[4,5,6],ref:'§ 6 stk. 1 nr. 4 · § 13 · § 15',
-     sp:['Kender I det svageste led i jeres forsyningskæde?','Hvem sender den tidlige varsling og kan det ske inden for 24 timer?','Er der én talsperson og én godkendt besked til kunderne?']},
-    {navn:'Fase 6–8: Governance, tilsyn og opfølgning',runder:[7,8,9,10],ref:'§ 7 · § 21 · § 23 · Art. 20',
-     sp:['Har bestyrelsen taget stilling til NIS2 og det personlige ansvar?','Hvem håndterer et opkald fra Sikkerhedsstyrelsen?','Hvad er de tre første konkrete skridt inden for 30 dage?']},
-  ];
+    if(!re.length) return null;
+    const badPct=Math.round(re.filter(e=>e.quality==='bad').length/re.length*100);
+    const goodPct=Math.round(re.filter(e=>e.quality==='good').length/re.length*100);
+    // Tekstfordeling
+    const tc={};re.forEach(e=>{const k=e.shortText||'–';tc[k]=(tc[k]||0)+1;});
+    const sorted=Object.entries(tc).sort((a,b)=>b[1]-a[1]);
+    return {ri, r, re, badPct, goodPct, sorted, total:re.length};
+  }).filter(Boolean).sort((a,b)=>b.badPct-a.badPct).slice(0,3);
 
   document.getElementById('debrief-content').innerHTML=`
-    <div class="dsg">
-      <div class="ds" style="background:#1A3A2A;border:1px solid #3A6A4A">
-        <div style="font-size:26px;font-weight:700;color:#5DC8A0">${pG}%</div>
-        <div style="font-size:8px;color:#5DC8A0;font-weight:700;text-transform:uppercase">Bedste valg</div>
-        <div style="font-size:9.5px;color:#7A9DA5;margin-top:.15rem">${good} af ${tot}</div>
-      </div>
-      <div class="ds" style="background:#3A3520;border:1px solid #8B7A30">
-        <div style="font-size:26px;font-weight:700;color:#D4B840">${neu}</div>
-        <div style="font-size:8px;color:#D4B840;font-weight:700;text-transform:uppercase">Neutrale</div>
-        <div style="font-size:9.5px;color:#7A9DA5;margin-top:.15rem">${tot?Math.round(neu/tot*100):0}% af svar</div>
-      </div>
-      <div class="ds" style="background:#3A1A1A;border:1px solid #8B3A3A">
-        <div style="font-size:26px;font-weight:700;color:#E05555">${pB}%</div>
-        <div style="font-size:8px;color:#E05555;font-weight:700;text-transform:uppercase">Kritiske</div>
-        <div style="font-size:9.5px;color:#7A9DA5;margin-top:.15rem">${bad} af ${tot}</div>
+
+    <!-- Trin-indikator -->
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;flex-shrink:0">
+      ${[['1','Spejling','active'],['2','Fordybning',''],['3','Forpligtelse','']].map(([n,l,a])=>`
+        <div style="display:flex;align-items:center;gap:.35rem;opacity:${a?'1':'.4'}">
+          <div style="width:22px;height:22px;border-radius:50%;background:${a?'#3A646D':'#1A2830'};border:1px solid ${a?'#80B4BF':'#3A646D'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:${a?'white':'#7A9DA5'}">${n}</div>
+          <span style="font-size:10px;font-weight:${a?'700':'400'};color:${a?'#E8F4F6':'#7A9DA5'}">${l}</span>
+        </div>
+        ${n!=='3'?'<div style="flex:1;height:1px;background:#3A646D;max-width:40px"></div>':''}`).join('')}
+      <div style="margin-left:auto">
+        <button onclick="debriefStep=2;debriefFaseIdx=0;renderDebrief()" style="background:#3A646D;color:white;border:none;border-radius:4px;padding:.5rem 1rem;font-size:11px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;touch-action:manipulation">Fortsæt → Fordybning</button>
       </div>
     </div>
 
-    ${mp.pct>0?`<div class="dh">
-      <div class="dh-l">⚡ Mest polariserende – Runde ${mp.round}: ${mp.label} (${mp.pct}% kritiske valg)</div>
-      <div class="dh-t">${mp.text}</div>
-    </div>`:''}
+    <!-- Samlet scorecard -->
+    <div style="background:#1A2830;border:1px solid #3A646D;border-radius:5px;padding:.85rem 1rem;margin-bottom:.85rem;flex-shrink:0">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF;margin-bottom:.65rem">Gruppens samlede præstation · ${tot} svar</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-bottom:.75rem">
+        <div style="background:#1A3A2A;border:1px solid #3A6A4A;border-radius:4px;padding:.65rem;text-align:center">
+          <div style="font-size:32px;font-weight:700;color:#5DC8A0;line-height:1">${pG}%</div>
+          <div style="font-size:8px;color:#5DC8A0;font-weight:700;text-transform:uppercase;margin-top:.2rem">Bedste valg</div>
+          <div style="font-size:9px;color:#7A9DA5;margin-top:.1rem">${good} af ${tot}</div>
+        </div>
+        <div style="background:#3A3520;border:1px solid #8B7A30;border-radius:4px;padding:.65rem;text-align:center">
+          <div style="font-size:32px;font-weight:700;color:#D4B840;line-height:1">${pN}%</div>
+          <div style="font-size:8px;color:#D4B840;font-weight:700;text-transform:uppercase;margin-top:.2rem">Neutralt valg</div>
+          <div style="font-size:9px;color:#7A9DA5;margin-top:.1rem">${neu} af ${tot}</div>
+        </div>
+        <div style="background:#3A1A1A;border:1px solid #8B3A3A;border-radius:4px;padding:.65rem;text-align:center">
+          <div style="font-size:32px;font-weight:700;color:#E05555;line-height:1">${pB}%</div>
+          <div style="font-size:8px;color:#E05555;font-weight:700;text-transform:uppercase;margin-top:.2rem">Kritisk valg</div>
+          <div style="font-size:9px;color:#7A9DA5;margin-top:.1rem">${bad} af ${tot}</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#7A9DA5;line-height:1.55;font-style:italic">
+        Spejl dette for gruppen – uden at bedømme. Hvad siger fordelingen om jeres organisations parathed til at håndtere en NIS2-hændelse?
+      </div>
+    </div>
 
-    ${FASER.map(f=>{
-      const fe=f.runder.flatMap(ri=>Object.values(ans[ri]||{}));
-      const fp=fe.length?Math.round(fe.filter(e=>e.quality==='bad').length/fe.length*100):0;
-      return `<div class="df">
-        <div class="df-h"><div class="df-t">${f.navn}</div><div class="df-r">${f.ref} · ${fp}% kritiske valg</div></div>
-        <div class="df-b">${f.sp.map(q=>`<div class="dq"><strong style="color:#5DC8A0">→</strong> ${q}</div>`).join('')}</div>
+    <!-- Top 3 polariserende runder -->
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#D4B840;margin-bottom:.5rem;flex-shrink:0">
+      ⚡ De mest polariserende runder – brug disse som samtaleåbnere
+    </div>
+
+    ${ranked.length===0?'<div style="color:#7A9DA5;font-size:12px;padding:1rem;text-align:center">Ingen svar endnu</div>':
+    ranked.map((item,idx)=>{
+      const barMax=item.sorted[0]?item.sorted[0][1]:1;
+      return `
+      <div style="background:#1A2830;border:1px solid ${idx===0?'#D4B840':'#3A646D'};border-radius:5px;padding:.85rem 1rem;margin-bottom:.55rem;flex-shrink:0">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.55rem;gap:.5rem">
+          <div>
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:${idx===0?'#D4B840':'#7A9DA5'};margin-bottom:.15rem">${idx===0?'⚡ Mest polariserende':'Polariserende'} · ${item.r.module}</div>
+            <div style="font-size:12px;font-weight:600;color:#E8F4F6">Runde ${item.ri+1} · ${item.r.time}</div>
+          </div>
+          <div style="text-align:center;flex-shrink:0">
+            <div style="font-size:24px;font-weight:700;color:#E05555;line-height:1">${item.badPct}%</div>
+            <div style="font-size:8px;color:#E05555;font-weight:600;text-transform:uppercase">kritiske</div>
+          </div>
+        </div>
+
+        <!-- Mini søjlediagram over hvad gruppen valgte -->
+        ${item.sorted.map(([label,count])=>{
+          const pct=Math.round((count/item.total)*100);
+          const bp=Math.round((count/barMax)*100);
+          return `<div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.3rem">
+            <div style="font-size:9.5px;color:#C8E0E5;width:180px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div>
+            <div style="flex:1;background:#243540;border-radius:2px;height:16px;overflow:hidden">
+              <div style="height:100%;width:${bp}%;background:linear-gradient(90deg,#3A646D,#80B4BF);border-radius:2px;transition:width .4s ease"></div>
+            </div>
+            <div style="font-size:10px;font-weight:700;color:#E8F4F6;width:38px;text-align:right">${count} (${pct}%)</div>
+          </div>`;
+        }).join('')}
+
+        <!-- Debriefspørgsmål til denne runde -->
+        <div style="margin-top:.6rem;padding-top:.55rem;border-top:1px solid #243540">
+          <div style="font-size:9px;font-weight:700;color:#5DC8A0;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.2rem">Spørg gruppen</div>
+          <div style="font-size:12px;color:#B8DDD5;line-height:1.55;font-style:italic">"${item.r.debrief}"</div>
+        </div>
       </div>`;
     }).join('')}
+  `;
+}
 
-    <div style="background:#1E3A2A;border:1px solid #3A6A4A;border-radius:4px;padding:.75rem .85rem;margin-top:.35rem">
-      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#5DC8A0;margin-bottom:.35rem">Afslutningsøvelse – individuel forpligtelse</div>
-      <div style="font-size:11.5px;color:#B8DDD5;line-height:1.6">Bed hver deltager svare på ét spørgsmål inden de forlader lokalet:<br>
-      <strong style="color:#5DC8A0">»Hvad er det ene konkrete NIS2-skridt du forpligter dig til inden for de næste 14 dage?«</strong></div>
+// ── TRIN 2: FORDYBNING ────────────────────────────────────────────────────
+function renderDebriefFordybning(ans){
+  const FASER=[
+    {navn:'Fase 1–2',undertitel:'Opdagelse, ISMS og beredskab',runder:[0,1,2,3],ref:'§ 6 · § 7',
+     intro:'Grundlaget for alt andet. Uden ledelsesejerskab og aktivoversigt fra starten er alle efterfølgende skridt vanskeligere.',
+     sp:[
+       {q:'Hvem ejer ledelsesansvaret fra minut ét i jeres organisation?', hint:'Tænk på: er rollen aftalt og øvet – eller opstår den ad hoc?'},
+       {q:'Har I en aktivoversigt og risikovurdering som ledelsen har godkendt?', hint:'Ikke IT-afdelingens – ledelsens. Er den skrevet ned og opdateret?'},
+       {q:'Er jeres beredskabsplan øvet inden for det seneste år?', hint:'En plan der ikke er øvet, er ikke en plan.'},
+     ]},
+    {navn:'Fase 3–5',undertitel:'Leverandør, frister og kommunikation',runder:[4,5,6],ref:'§ 6 stk. 1 nr. 4 · § 13 · § 15',
+     intro:'Her brister de fleste organisationer. Forsyningskæden er usynlig, fristerne er korte og kommunikationen er ukontrolleret.',
+     sp:[
+       {q:'Kender I det svageste led i jeres IT-forsyningskæde?', hint:'CloudHost var DataBridges blinde vinkel. Hvem er jeres?'},
+       {q:'Hvem sender den tidlige NIS2-varsling – og kan det ske inden for 24 timer?', hint:'Ikke "IT" eller "juristen" – hvem specifikt, og har de mandat?'},
+       {q:'Er der én udpeget talsperson og én godkendt besked til kunderne?', hint:'Tre ledere med tre versioner er det samme som ingen plan.'},
+     ]},
+    {navn:'Fase 6–8',undertitel:'Governance, tilsyn og opfølgning',runder:[7,8,9,10],ref:'§ 7 · § 21 · § 23 · Art. 20',
+     intro:'Det personlige ansvar overrasker de fleste ledere. § 23 giver myndighederne mulighed for at suspendere direktøren midlertidigt.',
+     sp:[
+       {q:'Har bestyrelsen nogensinde diskuteret NIS2 og det personlige ledelsesansvar?', hint:'Ikke som et punkt på dagsordenen – som en reel drøftelse med konsekvenser.'},
+       {q:'Hvem tager telefonen hvis Sikkerhedsstyrelsen ringer?', hint:'Har vedkommende mandat, viden og forberedte svar?'},
+       {q:'Hvad er de tre første konkrete skridt I tager inden for 30 dage?', hint:'Brug dette som en konkret afslutning – lad deltagerne selv sige det højt.'},
+     ]},
+  ];
+
+  // Sorter faser efter flest kritiske valg (dårligste fase først)
+  const faseMedScore = FASER.map(f=>{
+    const fe=f.runder.flatMap(ri=>Object.values(ans[ri]||{}));
+    const badPct=fe.length?Math.round(fe.filter(e=>e.quality==='bad').length/fe.length*100):0;
+    return {...f, badPct, total:fe.length};
+  }).sort((a,b)=>b.badPct-a.badPct);
+
+  const fase = faseMedScore[debriefFaseIdx];
+  const hasNext = debriefFaseIdx < faseMedScore.length - 1;
+
+  document.getElementById('debrief-content').innerHTML=`
+
+    <!-- Trin-indikator -->
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;flex-shrink:0">
+      ${[['1','Spejling',''],['2','Fordybning','active'],['3','Forpligtelse','']].map(([n,l,a])=>`
+        <div style="display:flex;align-items:center;gap:.35rem;opacity:${a?'1':'.4'}">
+          <div style="width:22px;height:22px;border-radius:50%;background:${a?'#3A646D':'#1A2830'};border:1px solid ${a?'#80B4BF':'#3A646D'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:${a?'white':'#7A9DA5'}">${n}</div>
+          <span style="font-size:10px;font-weight:${a?'700':'400'};color:${a?'#E8F4F6':'#7A9DA5'}">${l}</span>
+        </div>
+        ${n!=='3'?'<div style="flex:1;height:1px;background:#3A646D;max-width:40px"></div>':''}`).join('')}
+      <div style="margin-left:auto;display:flex;gap:.4rem">
+        <button onclick="debriefStep=1;renderDebrief()" style="background:#1A2830;color:#80B4BF;border:1px solid #3A646D;border-radius:4px;padding:.5rem .75rem;font-size:10px;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif">← Tilbage</button>
+        ${hasNext
+          ? `<button onclick="debriefFaseIdx++;renderDebrief()" style="background:#3A646D;color:white;border:none;border-radius:4px;padding:.5rem 1rem;font-size:11px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif">Næste fase →</button>`
+          : `<button onclick="debriefStep=3;renderDebrief()" style="background:#3A646D;color:white;border:none;border-radius:4px;padding:.5rem 1rem;font-size:11px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif">Fortsæt → Forpligtelse</button>`
+        }
+      </div>
     </div>
 
-    <div style="background:#1A2830;border:1px solid #3A646D;border-radius:4px;padding:.75rem .85rem;margin-top:.5rem">
-      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF;margin-bottom:.45rem">Videre med Erhvervsakademi Aarhus</div>
-      ${[['NIS2 Compliance-forløb','eaaa.dk/nis','Praktisk forløb med ISMS-værktøjer og juridisk forankring'],
-         ['Sikkerhedsstyrelsen','sik.dk/erhverv/nis2-direktivet','Officiel vejledning, tilsyn og lovtekst'],
-         ['SikkerDigital.dk','sikkerdigital.dk/nis2','Praktiske tjeklister og ISMS-guide til virksomheder'],
-         ['Datatilsynet','datatilsynet.dk','GDPR-vejledning og anmeldelse af brud'],
-        ].map(([n,u,d])=>`
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:.3rem 0;border-bottom:1px solid rgba(128,180,191,.08);font-size:10.5px">
-          <div><span style="font-weight:600;color:#C8E0E5">${n}</span> <span style="color:#7A9DA5">${d}</span></div>
-          <span style="color:#80B4BF;font-weight:600;white-space:nowrap;margin-left:.5rem">${u}</span>
+    <!-- Fase-indikator -->
+    <div style="display:flex;gap:.35rem;margin-bottom:.75rem;flex-shrink:0">
+      ${faseMedScore.map((f,i)=>`
+        <div onclick="debriefFaseIdx=${i};renderDebrief()" style="flex:1;padding:.4rem .5rem;border-radius:4px;border:1px solid ${i===debriefFaseIdx?'#80B4BF':'#3A646D'};background:${i===debriefFaseIdx?'#3A646D':'#1A2830'};cursor:pointer;text-align:center">
+          <div style="font-size:9px;font-weight:700;color:${i===debriefFaseIdx?'white':'#7A9DA5'}">${f.navn}</div>
+          <div style="font-size:11px;font-weight:700;color:${f.badPct>50?'#E05555':f.badPct>25?'#D4B840':'#5DC8A0'};margin-top:.1rem">${f.badPct}% kritisk</div>
         </div>`).join('')}
-    </div>`;
+    </div>
+
+    <!-- Aktiv fase -->
+    <div style="background:#1A2830;border:1px solid #3A646D;border-top:3px solid #80B4BF;border-radius:5px;padding:1rem;flex-shrink:0">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF;margin-bottom:.2rem">${fase.navn} · ${fase.ref}</div>
+      <div style="font-size:16px;font-weight:700;color:#E8F4F6;margin-bottom:.5rem">${fase.undertitel}</div>
+      <div style="font-size:12px;color:#7A9DA5;line-height:1.6;margin-bottom:.85rem;font-style:italic;padding-bottom:.75rem;border-bottom:1px solid #243540">${fase.intro}</div>
+
+      ${fase.sp.map((item,i)=>`
+        <div style="margin-bottom:.85rem;padding-bottom:.85rem;border-bottom:1px solid #243540">
+          <div style="display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.35rem">
+            <div style="width:22px;height:22px;border-radius:50%;background:#3A646D;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${i+1}</div>
+            <div style="font-size:14px;font-weight:600;color:#E8F4F6;line-height:1.45">${item.q}</div>
+          </div>
+          <div style="margin-left:30px;font-size:11.5px;color:#7A9DA5;line-height:1.55;font-style:italic">💬 ${item.hint}</div>
+        </div>`).join('')}
+
+      <div style="background:#1E3A2A;border:1px solid #3A6A4A;border-radius:4px;padding:.6rem .85rem;margin-top:.25rem">
+        <div style="font-size:9px;font-weight:700;color:#5DC8A0;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.2rem">Facilitatortip</div>
+        <div style="font-size:11.5px;color:#B8DDD5;line-height:1.55">Lad deltagerne svare selv – uden at kommentere eller korrigere med det samme. Stilhed er okay. Det er her læringen sker.</div>
+      </div>
+    </div>
+  `;
+}
+
+// ── TRIN 3: FORPLIGTELSE ──────────────────────────────────────────────────
+function renderDebriefForpligtelse(){
+  document.getElementById('debrief-content').innerHTML=`
+
+    <!-- Trin-indikator -->
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;flex-shrink:0">
+      ${[['1','Spejling',''],['2','Fordybning',''],['3','Forpligtelse','active']].map(([n,l,a])=>`
+        <div style="display:flex;align-items:center;gap:.35rem;opacity:${a?'1':'.4'}">
+          <div style="width:22px;height:22px;border-radius:50%;background:${a?'#3A646D':'#1A2830'};border:1px solid ${a?'#80B4BF':'#3A646D'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:${a?'white':'#7A9DA5'}">${n}</div>
+          <span style="font-size:10px;font-weight:${a?'700':'400'};color:${a?'#E8F4F6':'#7A9DA5'}">${l}</span>
+        </div>
+        ${n!=='3'?'<div style="flex:1;height:1px;background:#3A646D;max-width:40px"></div>':''}`).join('')}
+      <div style="margin-left:auto">
+        <button onclick="debriefStep=2;renderDebrief()" style="background:#1A2830;color:#80B4BF;border:1px solid #3A646D;border-radius:4px;padding:.5rem .75rem;font-size:10px;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif">← Tilbage</button>
+      </div>
+    </div>
+
+    <!-- Forpligtelsesskærm – projektorvenlig -->
+    <div style="background:#1A2830;border:1px solid #3A646D;border-top:4px solid #5DC8A0;border-radius:5px;padding:1.5rem;text-align:center;margin-bottom:.85rem;flex-shrink:0">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#5DC8A0;margin-bottom:1rem">Afslutningsøvelse · Individuel forpligtelse</div>
+      <div style="font-size:22px;font-weight:700;color:#E8F4F6;line-height:1.4;margin-bottom:1.25rem">
+        »Hvad er det ene konkrete<br>NIS2-skridt du forpligter dig til<br>inden for de næste 14 dage?«
+      </div>
+      <div style="font-size:12px;color:#7A9DA5;line-height:1.65">
+        Giv alle 60 sekunders stilhed til at tænke.<br>
+        Bed derefter to eller tre deltagere dele deres svar højt.
+      </div>
+    </div>
+
+    <!-- Facilitatorguide til afslutning -->
+    <div style="background:#243540;border:1px solid #3A646D;border-radius:5px;padding:.85rem 1rem;margin-bottom:.65rem;flex-shrink:0">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF;margin-bottom:.6rem">Facilitatorguide · De næste 5 minutter</div>
+      ${[
+        ['1','Stilhed','Lad spørgsmålet stå på skærmen. Sig ingenting i 60 sekunder. Lad tanken lande.'],
+        ['2','Del','Bed 2–3 deltagere dele deres forpligtelse højt med resten af gruppen.'],
+        ['3','Anerkend','Kvitter kort for hvert svar uden at vurdere det. "Tak – det er et konkret skridt."'],
+        ['4','Afslut','Henvis til rapporten i simulationen (PDF) og til eaaa.dk/nis for videre uddannelse.'],
+      ].map(([n,l,t])=>`
+        <div style="display:flex;gap:.6rem;padding:.4rem 0;border-bottom:1px solid #1A2830;align-items:flex-start">
+          <div style="width:20px;height:20px;border-radius:50%;background:#3A646D;color:white;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${n}</div>
+          <div><span style="font-size:11.5px;font-weight:700;color:#C8E0E5">${l}: </span><span style="font-size:11.5px;color:#B8DDD5">${t}</span></div>
+        </div>`).join('')}
+    </div>
+
+    <!-- Ressourcer -->
+    <div style="background:#1A2830;border:1px solid #3A646D;border-radius:5px;padding:.85rem 1rem;flex-shrink:0">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF;margin-bottom:.5rem">Videre med Erhvervsakademi Aarhus</div>
+      ${[
+        ['NIS2 Compliance-forløb','eaaa.dk/nis','Praktisk forløb med ISMS-værktøjer og juridisk forankring','#3A646D'],
+        ['Sikkerhedsstyrelsen','sik.dk/erhverv/nis2-direktivet','Officiel vejledning, tilsyn og lovtekst','#1A2830'],
+        ['SikkerDigital.dk','sikkerdigital.dk/nis2','Praktiske tjeklister og ISMS-guide','#1A2830'],
+        ['Datatilsynet','datatilsynet.dk','GDPR-vejledning og anmeldelse af brud','#1A2830'],
+      ].map(([n,u,d,bg])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem .5rem;border-radius:3px;background:${bg};margin-bottom:.25rem">
+          <div><span style="font-size:11px;font-weight:600;color:#C8E0E5">${n}</span> <span style="font-size:10px;color:#7A9DA5">${d}</span></div>
+          <span style="font-size:10px;color:#80B4BF;font-weight:600;margin-left:.5rem;white-space:nowrap">${u}</span>
+        </div>`).join('')}
+    </div>
+  `;
 }
 
 // ── OVERSIGT ──────────────────────────────────────────────────────────────
