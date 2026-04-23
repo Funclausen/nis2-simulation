@@ -462,19 +462,25 @@ function renderRound(){
   const r=ROUNDS[ST.round];
   const pct=Math.round((ST.round/TOTAL)*100);
   const chosen=ST.chosen.find(c=>c.round===ST.round);
+  const faseLabel=r.module;
   return `
   ${indGrid()}
   <div class="prog-wrap">
     <div class="prog-label">${r.title} af ${TOTAL} · ${r.time}</div>
     <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
   </div>
-  <div class="card">
+  <div class="card" style="padding-top:0;overflow:hidden">
+    <!-- Fase-banner -->
+    <div style="background:#3A646D;margin:-1.1rem -1.2rem 1rem -1.2rem;padding:.6rem 1.2rem .55rem;border-bottom:2px solid #80B4BF">
+      <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.65);margin-bottom:.15rem">Fagområde</div>
+      <div style="font-size:13px;font-weight:700;color:white;line-height:1.3">${r.module}</div>
+    </div>
+    <!-- Tags -->
     <div class="badges">
       <span class="tag tag-teal">${r.time}</span>
       <span class="tag tag-law">${r.lawRef}</span>
       ${r.ismsRef?`<span class="tag tag-isms">ISMS: ${r.ismsRef}</span>`:''}
     </div>
-    <div class="module-label">${r.module}</div>
     <div class="situation">${r.situation}</div>
     <div class="choices-label">Vælg ledelsens beslutning</div>
     ${r.choices.map((c,i)=>{
@@ -482,20 +488,9 @@ function renderRound(){
       let cls='';
       if(isSel)cls='good-sel';
       else if(chosen)cls='dimmed';
-      const deltas=isSel?`<div class="delta-row">
-        ${c.d!==0?`<span class="delta ${c.d>0?'pos':'neg'}">Drift ${sg(c.d)}${c.d}</span>`:''}
-        ${c.c!==0?`<span class="delta ${c.c>0?'pos':'neg'}">Compliance ${sg(c.c)}${c.c}</span>`:''}
-        ${c.o!==0?`<span class="delta ${c.o>0?'pos':'neg'}">Omdømme ${sg(c.o)}${c.o}</span>`:''}
-        ${c.l!==0?`<span class="delta ${c.l>0?'pos':'neg'}">Ledelse ${sg(c.l)}${c.l}</span>`:''}
-      </div>`:'';
-      const cons=isSel?`
-        <div class="consequence">${c.consequence}</div>
-        ${c.econ_impact>0?`<div class="econ-box"><strong>Estimeret eksponering</strong>${c.econ}${c.legal.length?`<div class="legal-chips">${c.legal.map(l=>`<span class="legal-chip">⚠ ${l}</span>`).join('')}</div>`:''}</div>`:''}
-      `:'';
-      return `<button class="choice ${cls}" onclick="choose(${i})" ${chosen?'disabled':''}>${c.text}${deltas}${cons}</button>`;
+      return `<button class="choice ${cls}" onclick="choose(${i})" ${chosen?'disabled':''}>${c.text}</button>`;
     }).join('')}
-    ${chosen?`<div class="insight-box"><strong>NIS2-indsigt</strong>${r.insight}</div>`:''}
-    ${chosen?`<button class="btn-primary" style="margin-top:.8rem" onclick="nextRound()">${ST.round+1<TOTAL?`Fortsæt til ${ROUNDS[ST.round+1].title} →`:'Se din rapport →'}</button>`:''}
+    ${chosen?`<button class="btn-primary" style="margin-top:.85rem" onclick="nextRound()">Se konsekvenser →</button>`:''}
   </div>`;
 }
 
@@ -583,11 +578,13 @@ function renderSummary(){
   const choice=r.choices[c.idx];
   const isNext=ST.round+1<TOTAL;
   const nextR=isNext?ROUNDS[ST.round+1]:null;
+  const choseGood=choice.quality==='good';
 
-  const qualityLabel=choice.quality==='good'?'Bedste valg':choice.quality==='bad'?'Risikabelt valg':'Neutralt valg';
-  const qualityIcon=choice.quality==='good'?'✓':choice.quality==='bad'?'⚠':'→';
+  // Find det korrekte svar (quality=good)
+  const goodIdx=r.choices.findIndex(x=>x.quality==='good');
+  const goodChoice=r.choices[goodIdx];
 
-  // Indikatorer der ændrede sig i denne runde
+  // Indikatorændringer
   const changes=[];
   if(choice.d!==0)changes.push({l:'Drift',v:choice.d});
   if(choice.c!==0)changes.push({l:'Compliance',v:choice.c});
@@ -595,60 +592,58 @@ function renderSummary(){
   if(choice.l!==0)changes.push({l:'Ledelse',v:choice.l});
 
   return `
-  <div style="max-width:680px;margin:0 auto">
-    <!-- Runde-header -->
-    <div style="background:#3A646D;border-radius:4px;padding:.85rem 1.1rem;margin-bottom:.75rem;display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.7);margin-bottom:.15rem">${r.title} af ${TOTAL} · ${r.time}</div>
-        <div style="font-size:15px;font-weight:700;color:white">${r.module}</div>
-      </div>
-      <div style="font-size:28px;font-weight:700;color:rgba(255,255,255,.9)">${ST.round+1}<span style="font-size:14px;opacity:.6">/${TOTAL}</span></div>
+  <!-- Fase-header -->
+  <div style="background:#3A646D;border-radius:4px 4px 0 0;padding:.75rem 1.1rem;margin-bottom:0">
+    <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.65);margin-bottom:.1rem">${r.title} af ${TOTAL} · ${r.time}</div>
+    <div style="font-size:14px;font-weight:700;color:white">${r.module}</div>
+  </div>
+  <div style="background:#2C4F57;border-radius:0 0 4px 4px;padding:.5rem 1.1rem;margin-bottom:.85rem">
+    <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.7)">${r.lawRef}</span>
+  </div>
+
+  <!-- Dit valg -->
+  <div class="card-plain" style="border-left:4px solid ${choseGood?'#3A646D':'#A32D2D'}">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#808B94;margin-bottom:.35rem">
+      Dit valg ${choseGood?'<span style="color:#3A646D">✓ Bedste valg</span>':'<span style="color:#A32D2D">⚠ '+( choice.quality==='bad'?'Risikabelt valg':'Neutralt valg')+'</span>'}
     </div>
+    <div style="font-size:13.5px;line-height:1.6;color:#2C3E44;font-weight:500;margin-bottom:.65rem;padding-bottom:.65rem;border-bottom:1px solid #BED4DB">${choice.text}</div>
+    <div style="font-size:13px;line-height:1.65;color:#5A6A70">${choice.consequence}</div>
+    ${choice.econ_impact>0?`<div class="econ-box" style="margin-top:.6rem"><strong>Estimeret eksponering</strong>${choice.econ}${choice.legal.length?`<div class="legal-chips">${choice.legal.map(l=>`<span class="legal-chip">⚠ ${l}</span>`).join('')}</div>`:''}</div>`:''}
+    ${!choice.econ_impact&&choice.legal&&choice.legal.length?`<div class="legal-chips" style="margin-top:.5rem">${choice.legal.map(l=>`<span class="legal-chip">⚠ ${l}</span>`).join('')}</div>`:''}
+  </div>
 
-    <!-- Dit valg -->
-    <div style="background:#fff;border:1px solid #BED4DB;border-radius:4px;padding:1rem 1.1rem;margin-bottom:.65rem">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#808B94;margin-bottom:.4rem">Dit valg</div>
-      <div style="font-size:13.5px;line-height:1.6;color:#2C3E44;margin-bottom:.65rem;padding-bottom:.65rem;border-bottom:1px solid #BED4DB">${choice.text}</div>
+  <!-- Korrekt svar – kun hvis ikke valgt -->
+  ${!choseGood?`
+  <div class="card-plain" style="border-left:4px solid #3A646D;background:#EBF4F6;margin-top:.5rem">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#3A646D;margin-bottom:.35rem">✓ Det bedste valg ville have været</div>
+    <div style="font-size:13px;line-height:1.6;color:#2C4F57;font-weight:500;margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid #BED4DB">${goodChoice.text}</div>
+    <div style="font-size:12.5px;line-height:1.65;color:#3A646D">${goodChoice.consequence}</div>
+  </div>`:''}
 
-      <!-- Konsekvens -->
-      <div style="font-size:12.5px;line-height:1.65;color:#5A6A70;margin-bottom:.5rem">${choice.consequence}</div>
-
-      <!-- Økonomi hvis relevant -->
-      ${choice.econ_impact>0?`<div style="background:#F4EBC0;border:1px solid #C8B86A;border-radius:4px;padding:.5rem .75rem;font-size:12px;color:#5A4A10;margin-top:.5rem">
-        <strong>Estimeret eksponering:</strong> ${dkk(choice.econ_impact)}
-      </div>`:''}
-
-      <!-- Juridiske flag -->
-      ${choice.legal&&choice.legal.length?`<div style="display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.5rem">
-        ${choice.legal.map(l=>`<span style="background:#FCEBEB;color:#A32D2D;border-radius:3px;padding:2px 7px;font-size:10px;font-weight:600">⚠ ${l}</span>`).join('')}
-      </div>`:''}
+  <!-- Indikatorændringer -->
+  ${changes.length?`
+  <div class="card-plain" style="margin-top:.5rem">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#808B94;margin-bottom:.5rem">Effekt på indikatorer denne runde</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      ${changes.map(ch=>`<div style="background:#fff;border:1px solid ${ch.v>0?'#80B4BF':'#F09595'};border-radius:4px;padding:.45rem .85rem;text-align:center">
+        <div style="font-size:10px;color:#808B94;font-weight:600;margin-bottom:.1rem">${ch.l}</div>
+        <div style="font-size:20px;font-weight:700;color:${ch.v>0?'#3A646D':'#A32D2D'}">${ch.v>0?'+':''}${ch.v}</div>
+      </div>`).join('')}
     </div>
+  </div>`:''}
 
-    <!-- Indikatorændringer -->
-    ${changes.length?`<div style="background:#F3F4F7;border:1px solid #BED4DB;border-radius:4px;padding:.75rem 1rem;margin-bottom:.65rem">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#808B94;margin-bottom:.5rem">Effekt på indikatorer denne runde</div>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-        ${changes.map(ch=>`<div style="background:#fff;border:1px solid ${ch.v>0?'#80B4BF':'#F09595'};border-radius:4px;padding:.4rem .75rem;text-align:center">
-          <div style="font-size:10px;color:#808B94;font-weight:600">${ch.l}</div>
-          <div style="font-size:18px;font-weight:700;color:${ch.v>0?'#3A646D':'#A32D2D'}">${ch.v>0?'+':''}${ch.v}</div>
-        </div>`).join('')}
-      </div>
-    </div>`:''}
+  <!-- NIS2-indsigt -->
+  <div class="insight-box" style="margin-top:.5rem">
+    <strong>NIS2-indsigt · ${r.lawRef}</strong>${r.insight}
+  </div>
 
-    <!-- NIS2-indsigt -->
-    <div style="border-left:3px solid #80B4BF;background:#EBF4F6;border-radius:0 4px 4px 0;padding:.65rem .9rem;margin-bottom:.75rem">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#3A646D;margin-bottom:.2rem">NIS2-indsigt</div>
-      <div style="font-size:13px;line-height:1.65;color:#2C4F57">${r.insight}</div>
-    </div>
+  <!-- Samlede indikatorer -->
+  <div style="margin-top:.75rem">${indGrid()}</div>
 
-    <!-- Samlede indikatorer -->
-    ${indGrid()}
-
-    <!-- Fortsæt-knap -->
-    <button class="btn-primary" onclick="continueAfterSummary()" style="margin-top:.5rem">
-      ${isNext?`Fortsæt til ${nextR.title}: ${nextR.time} →`:'Se din samlede rapport →'}
-    </button>
-  </div>`;
+  <!-- Fortsæt-knap -->
+  <button class="btn-primary" onclick="continueAfterSummary()" style="margin-top:.65rem">
+    ${isNext?`Fortsæt til ${nextR.title}: ${nextR.time} →`:'Se din samlede rapport →'}
+  </button>`;
 }
 
 // ─── HANDLINGER ──────────────────────────────────────────────────────────
@@ -683,17 +678,61 @@ function restart(){
 
 // ─── PDF ─────────────────────────────────────────────────────────────────
 function genPDF(){
+  if(typeof window.jspdf === 'undefined'){
+    alert('PDF-biblioteket er ikke indlæst. Prøv at genindlæse siden.');
+    return;
+  }
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const M=18,W=210,H=297,CW=W-M*2;
-  const C={jade:[58,100,109],teal:[128,180,191],shy:[190,212,219],pale:[235,244,246],
+  const M=16,W=210,H=297,CW=W-M*2;
+  const C={
+    jade:[58,100,109],teal:[128,180,191],shy:[190,212,219],pale:[235,244,246],
     butter:[244,235,192],gray:[128,139,148],qgray:[243,244,247],red:[163,45,45],
-    dark:[44,62,68],muted:[90,106,112],white:[255,255,255]};
+    dark:[44,62,68],muted:[90,106,112],white:[255,255,255],
+    goodBg:[235,244,246],badBg:[252,235,235],neutralBg:[243,244,247]
+  };
+
   const score=calcScore(ST),pk=getProfile(ST);
   const risks=getRisks(ST,ROUNDS),goods=getGoods(ST,ROUNDS);
-  const bad=ST.chosen.filter(c=>ROUNDS[c.round].choices[c.idx].quality==='bad').length;
+  const badCount=ST.chosen.filter(c=>ROUNDS[c.round].choices[c.idx].quality==='bad').length;
   const today=new Date().toLocaleDateString('da-DK',{day:'2-digit',month:'long',year:'numeric'});
 
+  // Fase-metadata til beslutningsoversigt
+  const FASER = [
+    { navn:'Fase 1 – Opdagelse og første respons',         runder:[0,2,3], ref:'NIS2 § 6 stk. 2 · § 7', læringsmål:'Forstå ledelsens pligt til aktivt tilsyn og dokumentation fra hændelsens første minut.', links:'sik.dk/erhverv/nis2-direktivet · sikkerdigital.dk/nis2' },
+    { navn:'Fase 2 – ISMS: Risiko og informationsaktiver', runder:[1],     ref:'NIS2 § 6 stk. 1 nr. 1', læringsmål:'Aktivoversigt og risikovurdering er ledelsens ansvar – ikke IT-afdelingens.', links:'sikkerdigital.dk/nis2 · iso.org (ISO 27001)' },
+    { navn:'Fase 3 – Leverandørkæden',                    runder:[4],     ref:'NIS2 § 6 stk. 1 nr. 4', læringsmål:'Forsyningskædesikkerhed er dit ansvar hele vejen til underleverandøren.', links:'sik.dk/erhverv/nis2-direktivet' },
+    { navn:'Fase 4 – Underretningspligter og frister',    runder:[5],     ref:'NIS2 § 13 · GDPR art. 33', læringsmål:'Tidlig varsling (24t) og GDPR-underretning (72t) er separate forpligtelser der løber parallelt.', links:'datatilsynet.dk · sik.dk' },
+    { navn:'Fase 5 – Kommunikation og omdømme',           runder:[6],     ref:'NIS2 § 15', læringsmål:'Koordineret krisekommunikation med én talsperson beskytter både compliance og omdømme.', links:'sikkerdigital.dk/nis2' },
+    { navn:'Fase 6 – Ledelsesansvar og governance',       runder:[7],     ref:'NIS2 § 7 · Art. 20', læringsmål:'Bestyrelsesinformation er en lovpligtig forpligtelse. Direktøren kan gøres personligt ansvarlig.', links:'sik.dk/erhverv/nis2-direktivet · retsinformation.dk' },
+    { navn:'Fase 7 – Myndighedskontakt og tilsyn',        runder:[8,9],   ref:'NIS2 § 21 · § 22 · § 23', læringsmål:'Åbenhed og samarbejde med tilsynet reducerer risikoen for suspension og bøde markant.', links:'sik.dk · virk.dk' },
+    { navn:'Fase 8 – Opfølgning og fremtidig compliance', runder:[10],    ref:'NIS2 § 6 · § 7 · § 13', læringsmål:'Hændelsen er ikke juridisk afsluttet før rapporten er indsendt og ISMS-arbejdet er igangsat.', links:'sikkerdigital.dk/nis2 · eaaa.dk/nis' }
+  ];
+
+  let pageNum = 0;
+  const pages = []; // tracker til korrekt sidetal
+
+  function newPage(){
+    if(pageNum > 0) doc.addPage();
+    pageNum++;
+    topbar();
+  }
+  function topbar(){
+    doc.setFillColor(...C.jade);doc.rect(0,0,W,14,'F');
+    doc.setFillColor(...C.teal);doc.rect(0,14,W,1.5,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);
+    doc.setTextColor(255,255,255);
+    doc.text('ERHVERVSAKADEMI AARHUS',M,9);
+    doc.setFont('helvetica','normal');doc.setFontSize(7);
+    doc.text('NIS2 Compliance · eaaa.dk/nis',W-M,9,{align:'right'});
+  }
+  function footer(label){
+    doc.setFillColor(...C.qgray);doc.rect(0,H-12,W,12,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(7);
+    doc.setTextColor(...C.gray);
+    doc.text('DataBridge Solutions A/S · NIS2 Ledelsessimulation',M,H-4);
+    doc.text(label,W-M,H-4,{align:'right'});
+  }
   function fr(x,y,w,h,col,r=0){
     doc.setFillColor(...col);
     r>0?doc.roundedRect(x,y,w,h,r,r,'F'):doc.rect(x,y,w,h,'F');
@@ -701,125 +740,286 @@ function genPDF(){
   function sr(x,y,w,h,col,lw=0.3){
     doc.setDrawColor(...col);doc.setLineWidth(lw);doc.rect(x,y,w,h,'S');
   }
-  function sf(weight='normal',size=10){doc.setFont('helvetica',weight);doc.setFontSize(size)}
-  function sc(col){doc.setTextColor(...col)}
-  function topbar(){
-    fr(0,0,W,14,C.jade);fr(0,14,W,1.5,C.teal);
-    sf('bold',8);sc(C.white);doc.text('ERHVERVSAKADEMI AARHUS',M,9);
-    sf('normal',7);doc.setTextColor(255,255,255);
-    doc.text('NIS2 Compliance · eaaa.dk/nis',W-M,9,{align:'right'});
-  }
-  function footer(pg,tot){
-    fr(0,H-12,W,12,C.qgray);
-    sf('normal',7);sc(C.gray);
-    doc.text('DataBridge Solutions A/S · NIS2 Ledelsessimulation',M,H-4);
-    doc.text(`Side ${pg} af ${tot}`,W-M,H-4,{align:'right'});
+  function sf(weight,size){doc.setFont('helvetica',weight);doc.setFontSize(size);}
+  function sc(col){doc.setTextColor(...col);}
+  function checkY(y,needed,footerLabel){
+    if(y+needed>H-18){
+      footer(footerLabel);
+      newPage();
+      return 24;
+    }
+    return y;
   }
   function secLabel(text,y){
     sf('bold',7);sc(C.gray);doc.text(text.toUpperCase(),M,y);
     doc.setDrawColor(...C.teal);doc.setLineWidth(.5);doc.line(M,y+1,W-M,y+1);
     return y+6;
   }
-  function pcols(k){
+  function profileColors(k){
     if(k==='robust')return{fill:C.pale,border:C.teal,text:[44,79,87]};
     if(k==='driftsfokus')return{fill:C.butter,border:[200,184,106],text:[90,74,16]};
     if(k==='reaktiv')return{fill:[250,236,231],border:[240,153,123],text:[74,27,12]};
     return{fill:[252,235,235],border:[240,149,149],text:[80,19,19]};
   }
+  function profileLabel(k){
+    if(k==='robust')return'Robust ledelse';
+    if(k==='driftsfokus')return'Driftsfokuseret ledelse';
+    if(k==='reaktiv')return'Reaktiv ledelse';
+    return'Saarbar ledelse';
+  }
+  function profileDesc(k){
+    if(k==='robust')return'DataBridge tog tidligt ansvar og arbejdede struktureret. Aktivoversigten, krisestaben og den loebende dokumentation viste, at ledelsen levede op til NIS2 kravene.';
+    if(k==='driftsfokus')return'DataBridge fik fokus paa at holde driften i gang, men oversaa vasentlige NIS2-krav til ISMS, dokumentation og rapportering.';
+    if(k==='reaktiv')return'DataBridge reagerede for sent og overlod for meget til TechOps. Adskillige frister og paragraf 7-forpligtelser blev ikke overholdt.';
+    return'DataBridge manglede samlet retning, ISMS og ledelsesstyring. En reel haendelse ville sandsynligvis resultere i boeder og fratagelse af ledelsesfunktion.';
+  }
 
-  // Side 1
-  topbar();let y=24;
+  // ════════════════════════════════════════════════════════
+  // SIDE 1 – Score, profil, risici, styrker
+  // ════════════════════════════════════════════════════════
+  newPage();
+  let y=24;
+
+  // Titel
   sf('bold',18);sc(C.jade);doc.text('NIS2 Simulationsrapport',M,y);y+=7;
-  sf('normal',9);sc(C.muted);doc.text(`DataBridge Solutions A/S  ·  Genereret ${today}`,M,y);y+=10;
+  sf('normal',9);sc(C.muted);doc.text('DataBridge Solutions A/S  \u00b7  Genereret '+today,M,y);y+=10;
 
-  // Score
-  fr(M,y,CW,22,C.pale,3);doc.setDrawColor(...C.teal);doc.setLineWidth(.8);doc.line(M,y,M+CW,y);
-  sf('bold',26);sc(C.jade);doc.text(score>0?`+${score}`:String(score),W/2,y+14,{align:'center'});
-  sf('normal',7);sc(C.gray);doc.text('SAMLET NIS2 LEDELSESSCORE',W/2,y+20,{align:'center'});y+=28;
+  // Score-boks
+  fr(M,y,CW,22,C.pale,3);
+  doc.setDrawColor(...C.teal);doc.setLineWidth(.8);doc.line(M,y,M+CW,y);
+  sf('bold',26);sc(C.jade);doc.text(score>0?'+'+score:String(score),W/2,y+14,{align:'center'});
+  sf('normal',7);sc(C.gray);doc.text('SAMLET NIS2 LEDELSESSCORE',W/2,y+20,{align:'center'});
+  y+=28;
 
   // Indikatorer
-  const indLabels=['Drift','Compliance','Omdoemme','Ledelse','Oek. risiko'];
-  const indVals=[ST.drift,ST.compliance,ST.omdoemme,ST.ledelse,null];
+  const iLabels=['Drift','Compliance','Omdoemme','Ledelse','Oek. risiko'];
+  const iVals=[ST.drift,ST.compliance,ST.omdoemme,ST.ledelse,null];
   const iw=(CW-4*3)/5;
-  indLabels.forEach((lbl,i)=>{
+  iLabels.forEach((lbl,i)=>{
     const ix=M+i*(iw+3),isE=i===4;
     const bg=isE?C.butter:C.qgray,br=isE?[200,184,106]:C.shy;
     fr(ix,y,iw,14,bg,2);sr(ix,y,iw,14,br);
     sf('bold',5.5);sc(isE?[122,106,32]:C.gray);doc.text(lbl.toUpperCase(),ix+iw/2,y+4.5,{align:'center'});
-    if(isE){sf('bold',7);sc([122,106,32]);doc.text(ST.econTotal?dkk(Math.abs(ST.econTotal)):'–',ix+iw/2,y+11,{align:'center'});}
-    else{const v=indVals[i],col=v>0?C.jade:v<0?C.red:C.dark;sf('bold',11);sc(col);doc.text((v>0?'+':'')+v,ix+iw/2,y+11,{align:'center'});}
-  });y+=20;
+    if(isE){
+      sf('bold',7);sc([122,106,32]);
+      doc.text(ST.econTotal?dkk(Math.abs(ST.econTotal)):'\u2013',ix+iw/2,y+11,{align:'center'});
+    } else {
+      const v=iVals[i],col=v>0?C.jade:v<0?C.red:C.dark;
+      sf('bold',11);sc(col);doc.text((v>0?'+':'')+v,ix+iw/2,y+11,{align:'center'});
+    }
+  });
+  y+=20;
 
   // Advarsel
-  if(bad>=4){
+  if(badCount>=4){
     fr(M,y,CW,11,[252,235,235],2);sr(M,y,CW,11,[240,149,149]);
-    sf('bold',7);sc([80,19,19]);doc.text(`Advarsel: ${bad} kritiske fejlvalg. Reel eksponering for boeder og potentiel suspension af ledelsesfunktion (§ 23).`,M+3,y+7.5);y+=16;
+    sf('bold',7);sc([80,19,19]);
+    doc.text('Advarsel: '+badCount+' kritiske fejlvalg. Reel eksponering for boeder og potentiel suspension (ss. 23).',M+3,y+7.5);
+    y+=16;
   }
 
   // Profil
   y=secLabel('Ledelsesvurdering',y);
-  const pc=pcols(pk);
-  fr(M,y,CW,28,pc.fill,3);doc.setDrawColor(...pc.border);doc.setLineWidth(1.2);doc.line(M,y,M,y+28);doc.setLineWidth(.3);sr(M,y,CW,28,pc.border);
-  sf('bold',11);sc(pc.text);doc.text(PROFILES[pk].label,M+4,y+8);
-  sf('normal',8.5);const dl=doc.splitTextToSize(PROFILES[pk].desc,CW-8);doc.text(dl,M+4,y+15);y+=34;
+  const pc=profileColors(pk);
+  fr(M,y,CW,30,pc.fill,3);
+  doc.setDrawColor(...pc.border);doc.setLineWidth(1.2);doc.line(M,y,M,y+30);
+  doc.setLineWidth(.3);sr(M,y,CW,30,pc.border);
+  sf('bold',11);sc(pc.text);doc.text(profileLabel(pk),M+4,y+8);
+  sf('normal',8.5);
+  const dl=doc.splitTextToSize(profileDesc(pk),CW-8);
+  doc.text(dl,M+4,y+15);
+  y+=36;
 
   // Risici
-  if(risks.length){y=secLabel('Identificerede risici og mangler',y);
-    risks.forEach(r=>{fr(M,y,CW,9,C.qgray,2);sr(M,y,CW,9,C.shy);doc.setFillColor(...C.red);doc.circle(M+4,y+4.5,1.2,'F');sf('normal',8);sc(C.dark);const ls=doc.splitTextToSize(r,CW-10);doc.text(ls,M+7,y+5.2);y+=ls.length>1?13:11;});y+=2;}
+  if(risks.length){
+    y=secLabel('Identificerede risici og mangler',y);
+    risks.forEach(r=>{
+      y=checkY(y,11,'Side 1');
+      fr(M,y,CW,9,C.qgray,2);sr(M,y,CW,9,C.shy);
+      doc.setFillColor(...C.red);doc.circle(M+4,y+4.5,1.2,'F');
+      sf('normal',8);sc(C.dark);
+      const ls=doc.splitTextToSize(r,CW-10);
+      doc.text(ls[0],M+7,y+5.2);
+      y+=11;
+    });
+    y+=2;
+  }
 
   // Styrker
-  if(goods.length){y=secLabel('Hvad DataBridge gjorde rigtigt',y);
-    goods.forEach(g=>{fr(M,y,CW,9,C.pale,2);sr(M,y,CW,9,C.teal);doc.setFillColor(...C.jade);doc.circle(M+4,y+4.5,1.2,'F');sf('normal',8);sc(C.dark);const ls=doc.splitTextToSize(g,CW-10);doc.text(ls,M+7,y+5.2);y+=ls.length>1?13:11;});}
+  if(goods.length){
+    y=secLabel('Hvad DataBridge gjorde rigtigt',y);
+    goods.forEach(g=>{
+      y=checkY(y,11,'Side 1');
+      fr(M,y,CW,9,C.pale,2);sr(M,y,CW,9,C.teal);
+      doc.setFillColor(...C.jade);doc.circle(M+4,y+4.5,1.2,'F');
+      sf('normal',8);sc(C.dark);
+      const ls=doc.splitTextToSize(g,CW-10);
+      doc.text(ls[0],M+7,y+5.2);
+      y+=11;
+    });
+  }
 
-  footer(1,2);
+  footer('Side 1 af '+( pageNum+2));
 
-  // Side 2
-  doc.addPage();topbar();y=24;
+  // ════════════════════════════════════════════════════════
+  // SIDE 2 – Beslutningsoversigt per fase
+  // ════════════════════════════════════════════════════════
+  newPage();
+  y=24;
+  sf('bold',14);sc(C.jade);doc.text('Beslutningsoversigt per fase',M,y);y+=5;
+  sf('normal',8.5);sc(C.muted);doc.text('Dine valg i simulationen – opdelt efter fagomraade',M,y);y+=9;
 
-  // Økonomi
+  FASER.forEach(fase=>{
+    // Find runder for denne fase som deltager har gennemfort
+    const faseChosen=ST.chosen.filter(c=>fase.runder.includes(c.round));
+    if(faseChosen.length===0)return;
+
+    y=checkY(y,22,'Side 2');
+
+    // Fase-header
+    fr(M,y,CW,14,C.jade,3);
+    doc.setFillColor(...C.teal);doc.rect(M,y,CW,2,'F');
+    sf('bold',9);sc(C.white);
+    const faseNavn=fase.navn.replace(/[^\x00-\x7E]/g,c=>c);
+    doc.text(faseNavn,M+4,y+9);
+    sf('normal',6.5);doc.setTextColor(255,255,255);
+    doc.text('Lovgrundlag: '+fase.ref,W-M-3,y+9,{align:'right'});
+    y+=16;
+
+    // Valg i denne fase
+    faseChosen.forEach(cv=>{
+      const rn=ROUNDS[cv.round],ch=rn.choices[cv.idx];
+      const isG=ch.quality==='good',isB=ch.quality==='bad';
+      const rowH=ch.econ_impact>0?22:16;
+      y=checkY(y,rowH+2,'Side 2');
+
+      const bg=isG?C.pale:isB?[252,235,235]:C.qgray;
+      const br=isG?C.teal:isB?[240,149,149]:C.shy;
+      const ac=isG?C.jade:isB?C.red:C.gray;
+      fr(M,y,CW,rowH,bg,2);sr(M,y,CW,rowH,br,.3);
+      doc.setFillColor(...ac);doc.rect(M,y,2.5,rowH,'F');
+
+      // Runde-label
+      sf('bold',6);sc(C.gray);
+      doc.text(rn.title+' \u00b7 '+rn.time,M+5,y+4);
+
+      // Valgt tekst
+      sf('normal',7.5);sc(C.dark);
+      const choiceLines=doc.splitTextToSize(ch.shortText||ch.text.substring(0,80),CW-30);
+      doc.text(choiceLines[0],M+5,y+9.5);
+
+      // Konsekvens (kort)
+      if(rowH>16){
+        sf('normal',6.5);sc(C.muted);
+        const consLines=doc.splitTextToSize(ch.consequence,CW-30);
+        doc.text(consLines[0],M+5,y+14.5);
+      }
+
+      // Kvalitetsmærke
+      const qL=isG?'God':isB?'Kritisk':'Neutral';
+      const qW=18;
+      fr(M+CW-qW-1,y+2.5,qW,6,ac,2);
+      sf('bold',5.5);sc(C.white);
+      doc.text(qL,M+CW-qW/2-1,y+6.5,{align:'center'});
+
+      // Økonomi
+      if(ch.econ_impact>0){
+        sf('bold',6.5);sc([90,74,16]);
+        doc.text(dkk(ch.econ_impact),M+CW-qW-5,y+14.5,{align:'right'});
+      }
+
+      y+=rowH+3;
+    });
+
+    // Læringsnote for denne fase
+    y=checkY(y,18,'Side 2');
+    fr(M,y,CW,16,[230,244,247],2);
+    doc.setDrawColor(...C.teal);doc.setLineWidth(.8);doc.line(M,y,M,y+16);
+    sf('bold',6);sc([44,79,87]);doc.text('Laeringsmaalet for dette fagomraade',M+4,y+4.5);
+    sf('normal',7);
+    const lmLines=doc.splitTextToSize(fase.læringsmål,CW-10);
+    doc.text(lmLines,M+4,y+9.5);
+    sf('normal',6);sc(C.gray);
+    doc.text('Laes mere: '+fase.links,M+4,y+14);
+    y+=20;
+  });
+
+  footer('Side 2 af '+(pageNum+1));
+
+  // ════════════════════════════════════════════════════════
+  // SIDE 3 – Økonomi + CTA
+  // ════════════════════════════════════════════════════════
+  newPage();
+  y=24;
+
+  // Økonomi-tabel
   if(ST.econTotal>0){
     y=secLabel('Oekonomisk risikoeksponering per runde',y);
     fr(M,y,CW,8,C.butter,2);sr(M,y,CW,8,[200,184,106]);
-    sf('bold',7);sc([90,74,16]);doc.text('Runde',M+3,y+5.2);doc.text('Tidspunkt',M+45,y+5.2);doc.text('Estimeret eksponering',W-M-3,y+5.2,{align:'right'});y+=9;
+    sf('bold',7);sc([90,74,16]);
+    doc.text('Runde',M+3,y+5.2);doc.text('Tidspunkt',M+50,y+5.2);
+    doc.text('Estimeret eksponering',W-M-3,y+5.2,{align:'right'});
+    y+=9;
     ST.chosen.forEach(c=>{
-      const ch=ROUNDS[c.round].choices[c.idx];if(!ch.econ_impact)return;
+      const ch=ROUNDS[c.round].choices[c.idx];
+      if(!ch.econ_impact)return;
       const rn=ROUNDS[c.round];
+      y=checkY(y,8,'Side 3');
       fr(M,y,CW,7,C.qgray,1);sr(M,y,CW,7,C.shy,.2);
-      sf('normal',7);sc(C.dark);doc.text(rn.title,M+3,y+4.8);doc.text(rn.time,M+45,y+4.8);
-      sf('bold',7);sc([90,74,16]);doc.text(dkk(ch.econ_impact),W-M-3,y+4.8,{align:'right'});y+=8;
+      sf('normal',7);sc(C.dark);doc.text(rn.title,M+3,y+4.8);doc.text(rn.time,M+50,y+4.8);
+      sf('bold',7);sc([90,74,16]);doc.text(dkk(ch.econ_impact),W-M-3,y+4.8,{align:'right'});
+      y+=8;
     });
-    fr(M,y,CW,9,C.butter,2);doc.setDrawColor(...[200,184,106]);doc.setLineWidth(.6);doc.rect(M,y,CW,9,'S');
-    sf('bold',9);sc([90,74,16]);doc.text('Samlet estimeret eksponering',M+3,y+6);doc.text(dkk(ST.econTotal),W-M-3,y+6,{align:'right'});y+=16;
+    fr(M,y,CW,9,C.butter,2);
+    doc.setDrawColor(...[200,184,106]);doc.setLineWidth(.6);doc.rect(M,y,CW,9,'S');
+    sf('bold',9);sc([90,74,16]);
+    doc.text('Samlet estimeret eksponering',M+3,y+6);
+    doc.text(dkk(ST.econTotal),W-M-3,y+6,{align:'right'});
+    y+=16;
   }
 
-  // Beslutningslog
-  y=secLabel('Beslutningslog – alle 11 runder',y);
-  ST.chosen.forEach((c,ii)=>{
-    const rn=ROUNDS[c.round],ch=rn.choices[c.idx];
-    const isG=ch.quality==='good',isB=ch.quality==='bad';
-    if(y+10>H-18){footer(2,2);doc.addPage();topbar();y=24;}
-    const bg=isG?C.pale:isB?[252,235,235]:C.qgray;
-    const br=isG?C.teal:isB?[240,149,149]:C.shy;
-    const ac=isG?C.jade:isB?C.red:C.gray;
-    fr(M,y,CW,10,bg,2);sr(M,y,CW,10,br,.25);doc.setFillColor(...ac);doc.rect(M,y,2,10,'F');
-    sf('bold',6);sc(C.gray);doc.text(`${rn.title}  ·  ${rn.time}`,M+4,y+3.5);
-    sf('normal',7.5);sc(C.dark);const logText=ch.shortText||ch.text.substring(0,72);doc.text(logText,M+4,y+8);
-    const qL=isG?'God':isB?'Kritisk':'Neutral';
-    fr(M+CW-17,y+2.5,16,5,ac,2);sf('bold',5.5);sc(C.white);doc.text(qL,M+CW-9,y+5.8,{align:'center'});
-    y+=12;
+  // Faglige ressourcer
+  y=secLabel('Faglige ressourcer og videre laering',y);
+  const ressourcer=[
+    {navn:'Sikkerhedsstyrelsen – NIS2',url:'sik.dk/erhverv/nis2-direktivet',desc:'Officiel vejledning, tilsynsinfo og NIS2-lovtekst'},
+    {navn:'SikkerDigital.dk',url:'sikkerdigital.dk/nis2',desc:'Praktisk ISMS-vejledning og tjeklister til virksomheder'},
+    {navn:'Datatilsynet',url:'datatilsynet.dk',desc:'GDPR-vejledning og anmeldelse af brud'},
+    {navn:'Retsinformation.dk',url:'retsinformation.dk',desc:'Den danske NIS2-lovtekst og bekeendtgoerelser'},
+    {navn:'EAAA NIS2 Compliance-forloeb',url:'eaaa.dk/nis',desc:'Forloeb der giver ledelser konkrete NIS2-kompetencer'},
+  ];
+  ressourcer.forEach(r=>{
+    y=checkY(y,10,'Side 3');
+    fr(M,y,CW,8,C.qgray,2);sr(M,y,CW,8,C.shy,.2);
+    doc.setFillColor(...C.teal);doc.circle(M+4,y+4,1.2,'F');
+    sf('bold',7.5);sc(C.jade);doc.text(r.navn,M+7,y+4.5);
+    sf('normal',6.5);sc(C.gray);doc.text(r.url,M+7,y+7.5);
+    sf('normal',6.5);sc(C.muted);doc.text(r.desc,W-M-3,y+6,{align:'right'});
+    y+=10;
   });
+  y+=4;
 
   // CTA
-  if(y+28>H-18){footer(2,2);doc.addPage();topbar();y=24;}
-  y+=4;fr(M,y,CW,28,C.jade,4);fr(M,y,CW,2,C.teal);
+  y=checkY(y,30,'Side 3');
+  fr(M,y,CW,28,C.jade,4);fr(M,y,CW,2,C.teal);
   sf('bold',11);sc(C.white);doc.text('NIS2 Compliance-forloeb – eaaa.dk/nis',M+6,y+9);
   sf('normal',8);doc.setTextColor(255,255,255);
   const ctaL=doc.splitTextToSize('Forlobet giver ledelser et faelles sprog, konkrete ISMS-vaerktojer og forstaelse for det personlige ansvar, NIS2 medfoerer.',CW-12);
   doc.text(ctaL,M+6,y+16);
 
-  footer(2,2);
-  window.open(doc.output('bloburl'),'_blank');
+  // Opdater alle footers med korrekt sidetal
+  const totalPages=pageNum;
+  // Ret footer side 1 og 2 – de er allerede skrevet med korrekt tal
+  footer('Side '+pageNum+' af '+totalPages);
+
+  // Aaben i ny fane
+  try {
+    const url=doc.output('bloburl');
+    window.open(url,'_blank');
+  } catch(e){
+    doc.save('nis2-simulationsrapport.pdf');
+  }
 }
+
 
 // ─── START ───────────────────────────────────────────────────────────────
 render();
