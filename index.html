@@ -156,11 +156,90 @@ h1{font-size:24px;font-weight:700;line-height:1.2;margin-bottom:.4rem;color:#2C3
 .footer a:hover{color:#3A646D}
 .footer strong{color:#3A646D;font-weight:700}
 
-@media(max-width:480px){
+/* ── RESPONSIVT ───────────────────────────────────────────────────────── */
+
+/* Tablet (iPad) */
+@media(max-width:768px){
+  .outer{padding:1rem .75rem 2.5rem}
+  h1{font-size:20px}
+  .subh{font-size:13px}
   .facts-grid{grid-template-columns:1fr 1fr}
   .meta-grid{grid-template-columns:1fr}
-  .ind.econ .ind-val{font-size:10px}
+  .ind-grid{gap:4px}
+  .ind-val{font-size:16px}
+  .ind.econ .ind-val{font-size:11px}
+  .situation{font-size:13px}
+  .choice{font-size:13px;padding:.7rem .85rem}
+  .score-num{font-size:36px}
 }
+
+/* Mobil (iPhone) */
+@media(max-width:480px){
+  .outer{padding:.75rem .65rem 2rem}
+  h1{font-size:18px}
+  .subh{font-size:12.5px}
+  .topbar{padding:.55rem .85rem}
+
+  /* Faktabokse: 2 kolonner */
+  .facts-grid{grid-template-columns:1fr 1fr;gap:5px}
+  .fact{padding:.45rem .55rem}
+  .fact-value{font-size:12px}
+  .fact-sub{font-size:10px}
+
+  /* Roller: fuld bredde */
+  .roles{gap:.3rem}
+  .role-chip{width:100%}
+
+  /* Meta: enkelt kolonne */
+  .meta-grid{grid-template-columns:1fr;gap:5px}
+
+  /* Indikatorer: 5 i én række – komprimerede */
+  .ind-grid{gap:3px}
+  .ind{padding:.45rem .25rem}
+  .ind-label{font-size:8px}
+  .ind-val{font-size:15px}
+  .ind.econ .ind-val{font-size:10px}
+
+  /* Progressbar */
+  .prog-label{font-size:10px}
+
+  /* Situation-tekst */
+  .situation{font-size:12.5px}
+
+  /* Svar-knapper: større touch-target */
+  .choice{font-size:13px;padding:.8rem .9rem;line-height:1.5}
+
+  /* Knapper */
+  .btn-primary{font-size:14px;padding:.85rem}
+  .btn-secondary{font-size:13px}
+  .btn-ghost{font-size:13px}
+
+  /* Score */
+  .score-num{font-size:34px}
+  .score-sub{font-size:11px}
+
+  /* Rapport liste-items */
+  .list-item{font-size:12.5px}
+
+  /* CTA */
+  .cta-box p{font-size:12.5px}
+  .cta-btn{font-size:12px;padding:.55rem 1.1rem}
+
+  /* Links */
+  .link-title{font-size:12px}
+  .link-sub{font-size:10px}
+}
+
+/* Timer */
+.timer-ring-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:.65rem}
+.timer-ring-svg{transform:rotate(-90deg)}
+.timer-ring-bg{fill:none;stroke:#BED4DB;stroke-width:4}
+.timer-ring-fill{fill:none;stroke-width:4;stroke-linecap:round;
+                 transition:stroke-dashoffset .9s linear, stroke .5s}
+.timer-center{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;
+              text-anchor:middle;dominant-baseline:central;font-family:'Montserrat',sans-serif}
+.timer-label-txt{font-size:7px;text-anchor:middle;font-family:'Montserrat',sans-serif;
+                 fill:#808B94;text-transform:uppercase;letter-spacing:.05em}
 </style>
 </head>
 <body>
@@ -181,7 +260,19 @@ h1{font-size:24px;font-weight:700;line-height:1.2;margin-bottom:.4rem;color:#2C3
   </div>
 </div>
 
-<div class="outer" id="app"></div>
+<div id="waiting-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;background:#F3F4F7">
+  <div style="background:#fff;border:1px solid #BED4DB;border-top:4px solid #80B4BF;border-radius:4px;max-width:420px;width:100%;padding:2rem;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+    <img src="https://www.eaaa.dk/assets/logo-da-small.svg" alt="EAAA" style="height:32px;margin-bottom:1.25rem" onerror="this.style.display='none'">
+    <div style="font-size:28px;margin-bottom:.75rem">⏳</div>
+    <h2 style="font-size:18px;font-weight:700;color:#2C3E44;margin-bottom:.5rem;font-family:'Montserrat',sans-serif">Venter på facilitatoren</h2>
+    <p style="font-size:13px;color:#5A6A70;line-height:1.65;margin-bottom:1.25rem;font-family:'Montserrat',sans-serif">Simulationen starter når facilitatoren er klar. Hold denne side åben – du vil automatisk blive sendt videre.</p>
+    <div style="display:flex;align-items:center;justify-content:center;gap:.5rem">
+      <span style="width:8px;height:8px;border-radius:50%;background:#80B4BF;display:inline-block;animation:pulse 1.5s infinite"></span>
+      <span style="font-size:12px;color:#808B94;font-family:'Montserrat',sans-serif;font-weight:600">Forbundet og klar</span>
+    </div>
+  </div>
+</div>
+<div id="app" style="display:none"></div>
 
 <script>
 // ─── DATA ────────────────────────────────────────────────────────────────
@@ -364,10 +455,15 @@ let ST = {
 // ─── RENDER ──────────────────────────────────────────────────────────────
 function render(){
   const app=document.getElementById('app');
+  if(!app||app.style.display==='none') return;
   if(ST.screen==='start')app.innerHTML=renderStart();
-  else if(ST.screen==='round')app.innerHTML=renderRound();
-  else if(ST.screen==='summary')app.innerHTML=renderSummary();
-  else app.innerHTML=renderReport();
+  else if(ST.screen==='round'){
+    app.innerHTML=renderRound();
+    // Start timer kun hvis ikke allerede besvaret
+    if(!ST.chosen.find(c=>c.round===ST.round)) startRoundTimer();
+  }
+  else if(ST.screen==='summary'){stopRoundTimer();app.innerHTML=renderSummary();}
+  else{stopRoundTimer();app.innerHTML=renderReport();}
   window.scrollTo(0,0);
 }
 
@@ -466,7 +562,19 @@ function renderRound(){
   return `
   ${indGrid()}
   <div class="prog-wrap">
-    <div class="prog-label">${r.title} af ${TOTAL} · ${r.time}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
+      <div class="prog-label">${r.title} af ${TOTAL} · ${r.time}</div>
+      <!-- Timer -->
+      <div style="display:flex;align-items:center;gap:.35rem;flex-shrink:0">
+        <svg id="timer-svg" width="64" height="64" viewBox="0 0 64 64">
+          <circle class="timer-ring-bg" cx="32" cy="32" r="28"/>
+          <circle class="timer-ring-fill" cx="32" cy="32" r="28"
+            style="stroke:#3A646D;stroke-dasharray:175.9;stroke-dashoffset:0"/>
+          <text id="timer-center" x="32" y="30" class="timer-center" fill="#2C3E44">2:00</text>
+          <text id="timer-label" x="32" y="42" class="timer-label-txt">tilbage</text>
+        </svg>
+      </div>
+    </div>
     <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
   </div>
   <div class="card" style="padding-top:0;overflow:hidden">
@@ -593,6 +701,7 @@ function renderSummary(){
 
   return `
   <!-- Fase-header -->
+  ${window._autoAdvanced ? `<div style="background:#FCEBEB;border:1px solid #F09595;border-radius:4px;padding:.55rem .85rem;margin-bottom:.65rem;font-size:12px;color:#A32D2D;font-weight:600">⏱ Tiden udløb – gruppen blev automatisk sendt videre med det mindst gunstige valg.</div>` : ''}
   <div style="background:#3A646D;border-radius:4px 4px 0 0;padding:.75rem 1.1rem;margin-bottom:0">
     <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.65);margin-bottom:.1rem">${r.title} af ${TOTAL} · ${r.time}</div>
     <div style="font-size:14px;font-weight:700;color:white">${r.module}</div>
@@ -648,15 +757,110 @@ function renderSummary(){
 
 // ─── HANDLINGER ──────────────────────────────────────────────────────────
 function startSim(){ST.screen='round';render()}
+// ─── TIMER ───────────────────────────────────────────────────────────────
+const TIMER_SECS = 120; // 2 minutter
+const AUTO_ADVANCE_SECS = 180; // 3 minutter – auto-fremrykning
+let _timerInterval = null;
+let _timerStart = null;
+
+function startRoundTimer(){
+  clearInterval(_timerInterval);
+  _timerStart = Date.now();
+  _timerInterval = setInterval(tickTimer, 250);
+}
+
+function stopRoundTimer(){
+  clearInterval(_timerInterval);
+  _timerInterval = null;
+}
+
+function tickTimer(){
+  if(ST.screen !== 'round') { stopRoundTimer(); return; }
+  if(ST.chosen.find(c=>c.round===ST.round)) { stopRoundTimer(); return; }
+
+  const elapsed = (Date.now() - _timerStart) / 1000;
+  const remaining = TIMER_SECS - elapsed;
+  const overdue = elapsed - TIMER_SECS;
+
+  // Auto-fremrykning ved 3 minutter – tildel dårligste svar
+  if(elapsed >= AUTO_ADVANCE_SECS){
+    stopRoundTimer();
+    autoAdvance();
+    return;
+  }
+
+  updateTimerDisplay(remaining, elapsed);
+}
+
+function updateTimerDisplay(remaining, elapsed){
+  const svg = document.getElementById('timer-svg');
+  const center = document.getElementById('timer-center');
+  const label = document.getElementById('timer-label');
+  if(!svg || !center) return;
+
+  const R = 28;
+  const circ = 2 * Math.PI * R;
+  const fill = svg.querySelector('.timer-ring-fill');
+
+  if(remaining >= 0){
+    // Nedtælling 2:00 → 0:00
+    const pct = remaining / TIMER_SECS;
+    const offset = circ * (1 - pct);
+    fill.style.strokeDasharray = circ;
+    fill.style.strokeDashoffset = offset;
+    fill.style.stroke = remaining > 30 ? '#3A646D' : '#A32D2D';
+    const m = Math.floor(remaining/60);
+    const s = Math.floor(remaining%60);
+    center.textContent = `${m}:${String(s).padStart(2,'0')}`;
+    center.style.fill = remaining > 30 ? '#2C3E44' : '#A32D2D';
+    if(label) label.textContent = 'tilbage';
+  } else {
+    // Over tid – tæller op i minus, rød
+    const overSecs = Math.floor(-remaining);
+    const m = Math.floor(overSecs/60);
+    const s = overSecs%60;
+    fill.style.strokeDasharray = circ;
+    fill.style.strokeDashoffset = 0;
+    fill.style.stroke = '#A32D2D';
+    center.textContent = `+${m>0?m+'m':s+'s'}`;
+    center.style.fill = '#A32D2D';
+    if(label) label.textContent = 'overskredet';
+    // Ryst kortet let
+    const card = document.querySelector('.card');
+    if(card && Math.floor(-remaining) % 10 === 0){
+      card.style.borderColor = '#A32D2D';
+      setTimeout(()=>{if(card)card.style.borderColor='';}, 300);
+    }
+  }
+}
+
+function autoAdvance(){
+  // Find det dårligste svar (quality=bad) – eller neutralt – eller første
+  const r = ROUNDS[ST.round];
+  let worstIdx = r.choices.findIndex(c=>c.quality==='bad');
+  if(worstIdx === -1) worstIdx = r.choices.findIndex(c=>c.quality==='neutral');
+  if(worstIdx === -1) worstIdx = 0;
+
+  // Marker med auto-flag
+  window._autoAdvanced = true;
+  choose(worstIdx);
+
+  // Gå direkte til summary efter kort pause
+  setTimeout(()=>{
+    window._autoAdvanced = false;
+    nextRound();
+  }, 800);
+}
+
 function choose(idx){
   if(ST.chosen.find(c=>c.round===ST.round))return;
+  stopRoundTimer();
   const c=ROUNDS[ST.round].choices[idx];
   ST.drift+=c.d;ST.compliance+=c.c;ST.omdoemme+=c.o;ST.ledelse+=c.l;
   ST.econTotal+=c.econ_impact||0;
   if(c.legal)ST.legalFlags.push(...c.legal);
   if(c.markers)c.markers.forEach(m=>ST.markers[m]=true);
   ST.chosen.push({round:ST.round,idx});
-  // Send til Firebase
   if(window.fbSend) window.fbSend(ST.round, c.quality, c.shortText||c.text.substring(0,60));
   render();
 }
@@ -1058,7 +1262,29 @@ window.fbSend = function(roundIdx, quality, shortText) {
   }).catch(e => console.warn('Firebase send fejl:', e));
 };
 
-// Lyt kun på reset-signal fra facilitator
+// Lyt på session/state – vis ventesskærm indtil facilitator starter
+onValue(ref(db, 'session/state'), snap => {
+  const state = snap.val();
+  const waiting = document.getElementById('waiting-screen');
+  const app = document.getElementById('app');
+  if(!waiting || !app) return;
+  if(state === 'active') {
+    // Session er startet af facilitator
+    waiting.style.display = 'none';
+    app.style.display = 'block';
+    app.className = 'outer';
+    // Render kun hvis simulation ikke allerede er i gang
+    if(typeof render === 'function' && (!window.ST || window.ST.screen === 'start')) {
+      render();
+    }
+  } else {
+    // Ingen aktiv session – vis ventesskærm
+    waiting.style.display = 'flex';
+    app.style.display = 'none';
+  }
+});
+
+// Lyt på reset-signal fra facilitator
 onValue(ref(db, 'session/resetSignal'), snap => {
   const v = snap.val();
   if(v && window._lastReset && v > window._lastReset) {
