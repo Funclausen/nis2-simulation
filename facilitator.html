@@ -3,591 +3,905 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NIS2 Facilitator – Realtidsdashboard</title>
+<title>NIS2 Facilitator – DataBridge Solutions A/S</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-  import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-database.js";
+const firebaseConfig = {
+  apiKey: "AIzaSyCf61thmI8AyQUkRldS2FmmZZFpa6yAXDc",
+  authDomain: "nis2-simulation.firebaseapp.com",
+  databaseURL: "https://nis2-simulation-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "nis2-simulation",
+  storageBucket: "nis2-simulation.firebasestorage.app",
+  messagingSenderId: "570342903290",
+  appId: "1:570342903290:web:cbeb11ba80c8e941ece843"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+let currentRound = 0;
+window.allAnswers = {};
 
-  // ── INDSÆT DIN FIREBASE-KONFIGURATION HER (samme som deltager.html) ──
-  const firebaseConfig = {
-    apiKey: "AIzaSyCf61thmI8AyQUkRldS2FmmZZFpa6yAXDc",
-    authDomain: "nis2-simulation.firebaseapp.com",
-    databaseURL: "https://nis2-simulation-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "nis2-simulation",
-    storageBucket: "nis2-simulation.firebasestorage.app",
-    messagingSenderId: "570342903290",
-    appId: "1:570342903290:web:cbeb11ba80c8e941ece843"
-  };
+onValue(ref(db,'answers'), snap => {
+  window.allAnswers = snap.val() || {};
+  updateDisplay();
+});
 
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-
-  let currentRound = 0;
-  let allAnswers = {};
-
-  // Lyt på alle svar i realtid
-  onValue(ref(db, 'answers'), snap => {
-    allAnswers = snap.val() || {};
-    updateDisplay();
+function updateDisplay() {
+  const rA = window.allAnswers[currentRound] || {};
+  const entries = Object.values(rA);
+  const total = entries.length;
+  const el = id => document.getElementById(id);
+  if(!el('participant-count')) return;
+  el('participant-count').textContent = total;
+  const exp = window.expectedParticipants || 1;
+  const pct = Math.min(100,Math.round((total/exp)*100));
+  el('progress-text').textContent = total>0 ? `${total} af ${exp} (${pct}%)` : 'Afventer svar...';
+  el('current-round-label').textContent = `Runde ${currentRound+1} af 11 · ${ROUND_META[currentRound].time}`;
+  el('round-module').textContent = ROUND_META[currentRound].module;
+  el('round-law').textContent = ROUND_META[currentRound].lawRef;
+  const counts={good:0,bad:0,neutral:0};
+  const choiceCounts={};
+  entries.forEach(e=>{
+    counts[e.quality]=(counts[e.quality]||0)+1;
+    const k=e.shortText||'Valg';
+    choiceCounts[k]=(choiceCounts[k]||0)+1;
   });
-
-  function updateDisplay() {
-    const round = currentRound;
-    const roundAnswers = allAnswers[round] || {};
-    const entries = Object.values(roundAnswers);
-    const total = entries.length;
-
-    document.getElementById('participant-count').textContent = total;
-    document.getElementById('current-round-label').textContent =
-      `Runde ${round + 1} af 11 · ${ROUND_META[round].time}`;
-    document.getElementById('round-module').textContent = ROUND_META[round].module;
-    document.getElementById('round-law').textContent = ROUND_META[round].lawRef;
-
-    // Tæl kvaliteter
-    const counts = { good: 0, bad: 0, neutral: 0 };
-    const choiceCounts = {};
-    entries.forEach(e => {
-      counts[e.quality] = (counts[e.quality] || 0) + 1;
-      const key = e.shortText || `Valg ${e.choice + 1}`;
-      choiceCounts[key] = (choiceCounts[key] || 0) + 1;
-    });
-
-    // Opdater søjlediagram
-    renderBars(choiceCounts, total);
-
-    // Opdater kvalitets-badges
-    document.getElementById('count-good').textContent = counts.good;
-    document.getElementById('count-bad').textContent = counts.bad;
-    document.getElementById('count-neutral').textContent = counts.neutral;
-
-    // Progressring
-    const pct = total > 0 ? Math.round((total / Math.max(total, window.expectedParticipants || 1)) * 100) : 0;
-    document.getElementById('progress-text').textContent = `${total} har svaret`;
-  }
-
-  function renderBars(choiceCounts, total) {
-    const container = document.getElementById('bars');
-    if (!total) { container.innerHTML = '<div class="waiting">Afventer svar...</div>'; return; }
-
-    const sorted = Object.entries(choiceCounts).sort((a,b) => b[1] - a[1]);
-    const max = sorted[0][1];
-
-    container.innerHTML = sorted.map(([label, count]) => {
-      const pct = Math.round((count / total) * 100);
-      const barPct = Math.round((count / max) * 100);
-      return `
-        <div class="bar-row">
-          <div class="bar-label">${label}</div>
-          <div class="bar-track">
-            <div class="bar-fill" style="width:${barPct}%"></div>
-          </div>
-          <div class="bar-count">${count} <span class="bar-pct">(${pct}%)</span></div>
-        </div>`;
-    }).join('');
-  }
-
-  // Sæt aktiv runde for deltagere
-  window.setRound = function(r) {
-    currentRound = r;
-    set(ref(db, 'session/activeRound'), r);
-    updateDisplay();
-    // Opdater runde-knapper
-    document.querySelectorAll('.round-btn').forEach((btn, i) => {
-      btn.classList.toggle('active', i === r);
-    });
-  };
-
-  // Nulstil alle svar
-  window.resetSession = function() {
-    if(!confirm('Nulstil ALLE svar for alle deltagere?')) return;
-    remove(ref(db, 'answers'));
-    set(ref(db, 'session/resetSignal'), Date.now());
-    set(ref(db, 'session/activeRound'), 0);
-    currentRound = 0;
-    window.setRound(0);
-  };
-
-  // Sæt forventet antal deltagere
-  window.setExpected = function(n) {
-    window.expectedParticipants = parseInt(n) || 1;
-    updateDisplay();
-  };
-
-  window.addEventListener('load', () => {
-    window.setRound(0);
+  el('count-good').textContent=counts.good;
+  el('count-bad').textContent=counts.bad;
+  el('count-neutral').textContent=counts.neutral;
+  const bars=el('bars');
+  if(!bars) return;
+  if(!total){bars.innerHTML='<div class="waiting">Afventer svar...</div>';return;}
+  const sorted=Object.entries(choiceCounts).sort((a,b)=>b[1]-a[1]);
+  const max=sorted[0][1];
+  bars.innerHTML=sorted.map(([label,count])=>{
+    const p=Math.round((count/total)*100);
+    const bp=Math.round((count/max)*100);
+    return `<div class="bar-row"><div class="bar-label">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${bp}%"></div></div><div class="bar-count">${count} <span class="bar-pct">(${p}%)</span></div></div>`;
+  }).join('');
+  if(document.getElementById('debrief-content').parentElement.style.display!=='none') renderDebrief();
+  if(document.getElementById('overview-content').parentElement.style.display!=='none') renderOverview();
+  document.querySelectorAll('.round-btn').forEach((btn,i)=>{
+    const rndAnswers=Object.keys(window.allAnswers[i]||{}).length;
+    btn.classList.toggle('answered', rndAnswers>0);
   });
-</script>
-
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Montserrat',sans-serif;background:#1A2830;color:#E8F4F6;min-height:100vh;display:flex;flex-direction:column}
-
-/* Topbar */
-.topbar{background:#3A646D;border-bottom:3px solid #80B4BF;padding:.65rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.topbar-left{display:flex;align-items:center;gap:.75rem}
-.topbar-logo{height:26px;filter:brightness(0) invert(1);opacity:.9}
-.topbar-title{font-size:13px;font-weight:700;color:white;text-transform:uppercase;letter-spacing:.06em;border-left:1px solid rgba(255,255,255,.3);padding-left:.75rem}
-.topbar-badge{font-size:10px;font-weight:600;background:#80B4BF;color:#1A2830;padding:2px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:.05em}
-
-/* Layout */
-.main{display:grid;grid-template-columns:280px 1fr;gap:1rem;padding:1rem;flex:1;min-height:0}
-
-/* Sidebar */
-.sidebar{display:flex;flex-direction:column;gap:.75rem}
-.panel{background:#243540;border:1px solid #3A646D;border-radius:6px;padding:1rem}
-.panel-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#80B4BF;margin-bottom:.65rem}
-
-/* Stats */
-.stat-big{font-size:48px;font-weight:700;color:#80B4BF;line-height:1;text-align:center;padding:.5rem 0}
-.stat-label{font-size:11px;color:#7A9DA5;text-align:center;margin-top:.25rem}
-
-.quality-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-top:.5rem}
-.q-cell{text-align:center;padding:.5rem .25rem;border-radius:4px}
-.q-cell.good{background:#1A3A2A;border:1px solid #3A646D}
-.q-cell.bad{background:#3A1A1A;border:1px solid #8B3A3A}
-.q-cell.neutral{background:#3A3520;border:1px solid #8B7A30}
-.q-num{font-size:22px;font-weight:700}
-.q-num.good{color:#5DC8A0}
-.q-num.bad{color:#E05555}
-.q-num.neutral{color:#D4B840}
-.q-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem}
-.q-lbl.good{color:#5DC8A0}
-.q-lbl.bad{color:#E05555}
-.q-lbl.neutral{color:#D4B840}
-
-/* Runde-knapper */
-.round-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.3rem}
-.round-btn{background:#1A2830;border:1px solid #3A646D;border-radius:4px;padding:.4rem .2rem;font-size:10px;font-weight:600;color:#7A9DA5;cursor:pointer;text-align:center;font-family:'Montserrat',sans-serif;transition:all .15s}
-.round-btn:hover{background:#243540;color:#80B4BF}
-.round-btn.active{background:#3A646D;color:white;border-color:#80B4BF}
-
-/* Kontroller */
-.ctrl-row{display:flex;gap:.5rem;margin-top:.35rem}
-.ctrl-btn{flex:1;padding:.55rem;font-size:11px;font-weight:700;border:none;border-radius:4px;cursor:pointer;font-family:'Montserrat',sans-serif;transition:background .15s}
-.ctrl-btn.primary{background:#3A646D;color:white}
-.ctrl-btn.primary:hover{background:#2C4F57}
-.ctrl-btn.danger{background:#5A1A1A;color:#E05555;border:1px solid #8B3A3A}
-.ctrl-btn.danger:hover{background:#6A2020}
-
-.input-row{display:flex;gap:.4rem;align-items:center}
-.input-row input{flex:1;background:#1A2830;border:1px solid #3A646D;border-radius:4px;padding:.4rem .6rem;font-size:12px;color:#E8F4F6;font-family:'Montserrat',sans-serif}
-.input-row label{font-size:10px;color:#7A9DA5;white-space:nowrap}
-
-/* Content area */
-.content{display:flex;flex-direction:column;gap:.75rem;min-height:0}
-
-/* Aktiv runde info */
-.round-info{background:#243540;border:1px solid #3A646D;border-radius:6px;padding:1rem 1.25rem}
-.round-info-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
-.round-number{font-size:22px;font-weight:700;color:#80B4BF}
-.round-time{font-size:12px;color:#7A9DA5;font-weight:600}
-.round-module{font-size:13px;font-weight:600;color:#E8F4F6;margin-bottom:.2rem}
-.round-law{display:inline-block;font-size:10px;font-weight:600;background:#1A3A4A;color:#80B4BF;border:1px solid #3A646D;border-radius:3px;padding:2px 8px}
-
-/* Søjlediagram */
-.chart-panel{background:#243540;border:1px solid #3A646D;border-radius:6px;padding:1rem 1.25rem;flex:1}
-.chart-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#80B4BF;margin-bottom:.85rem}
-.bar-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.65rem}
-.bar-label{font-size:11px;color:#C8E0E5;width:300px;flex-shrink:0;line-height:1.4}
-.bar-track{flex:1;background:#1A2830;border-radius:3px;height:28px;overflow:hidden}
-.bar-fill{height:100%;background:linear-gradient(90deg,#3A646D,#80B4BF);border-radius:3px;transition:width .6s ease;min-width:4px}
-.bar-count{font-size:16px;font-weight:700;color:#E8F4F6;width:70px;text-align:right;flex-shrink:0}
-.bar-pct{font-size:11px;color:#7A9DA5;font-weight:400}
-.waiting{text-align:center;color:#7A9DA5;padding:2rem;font-size:13px}
-
-/* Facilitator-noter */
-.notes-panel{background:#1E3A2A;border:1px solid #3A6A4A;border-radius:6px;padding:1rem 1.25rem}
-.notes-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#5DC8A0;margin-bottom:.65rem}
-.note-item{display:flex;gap:.5rem;padding:.35rem 0;border-bottom:1px solid rgba(93,200,160,.1);font-size:12px;line-height:1.5;color:#B8DDD5}
-.note-item:last-child{border-bottom:none}
-.note-icon{font-size:14px;flex-shrink:0;margin-top:1px}
-
-/* Progress */
-#progress-text{font-size:11px;color:#7A9DA5;text-align:center;margin-top:.3rem}
-
-/* Forbindelsesstatus */
-.status-dot{width:8px;height:8px;border-radius:50%;background:#5DC8A0;display:inline-block;margin-right:.35rem;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-
-@media(max-width:900px){
-  .main{grid-template-columns:1fr}
-  .bar-label{width:180px}
 }
+
+// Timer
+let timerStart=null, timerInterval=null;
+window.startTimer=function(){
+  timerStart=Date.now();
+  timerInterval=setInterval(()=>{
+    const el=document.getElementById('timer-display');
+    if(!el||!timerStart) return;
+    const s=Math.floor((Date.now()-timerStart)/1000);
+    const m=Math.floor(s/60), sc=s%60;
+    el.textContent=`${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;
+    el.style.color = m>=28?'#E05555':m>=22?'#D4B840':'#5DC8A0';
+  },1000);
+};
+
+window.setRound=function(r){
+  currentRound=r;
+  set(ref(db,'session/activeRound'),r);
+  updateDisplay();
+  updateNotes(r);
+  document.querySelectorAll('.round-btn').forEach((b,i)=>b.classList.toggle('active',i===r));
+  showPanel('chart');
+};
+window.startSession=function(){
+  remove(ref(db,'answers'));
+  set(ref(db,'session/resetSignal'),Date.now());
+  set(ref(db,'session/activeRound'),0);
+  window.allAnswers={};
+  currentRound=0;
+  window.expectedParticipants=parseInt(document.getElementById('expected-input').value)||15;
+  window.startTimer();
+  showScreen('live');
+  setTimeout(()=>{
+    document.querySelectorAll('.round-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+    updateNotes(0);
+    updateDisplay();
+  },100);
+};
+window.resetSession=function(){
+  if(!confirm('Nulstil alle svar og gå til intro?')) return;
+  clearInterval(timerInterval);timerStart=null;
+  const td=document.getElementById('timer-display');
+  if(td){td.textContent='00:00';td.style.color='#5DC8A0';}
+  remove(ref(db,'answers'));
+  set(ref(db,'session/resetSignal'),Date.now());
+  set(ref(db,'session/activeRound'),0);
+  window.allAnswers={};
+  showScreen('intro');
+};
+window.setExpected=function(n){window.expectedParticipants=parseInt(n)||1;updateDisplay();};
+window.addEventListener('load',()=>{window.expectedParticipants=15;showScreen('intro');});
+</script>
+<style>
+/* ── RESET & BASE ─────────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+html{height:100%}
+body{font-family:'Montserrat',sans-serif;background:#1A2830;color:#E8F4F6;
+     min-height:100vh;height:100%;display:flex;flex-direction:column;
+     -webkit-text-size-adjust:100%}
+
+/* ── TOPBAR ───────────────────────────────────────────────────────────── */
+.topbar{background:#3A646D;border-bottom:3px solid #80B4BF;
+        padding:.6rem 1rem;display:flex;align-items:center;
+        justify-content:space-between;flex-shrink:0;gap:.5rem}
+.tb-left{display:flex;align-items:center;gap:.55rem;min-width:0}
+.tb-logo{height:22px;filter:brightness(0) invert(1);opacity:.9;flex-shrink:0}
+.tb-title{font-size:11px;font-weight:700;color:white;text-transform:uppercase;
+          letter-spacing:.05em;border-left:1px solid rgba(255,255,255,.3);
+          padding-left:.55rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-right{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+.timer-box{background:rgba(0,0,0,.25);border-radius:4px;
+           padding:.25rem .65rem;display:flex;align-items:center;gap:.35rem}
+.timer-lbl{font-size:8px;font-weight:700;text-transform:uppercase;
+           color:rgba(255,255,255,.45);letter-spacing:.05em}
+#timer-display{font-size:22px;font-weight:700;color:#5DC8A0;
+               font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.pulse{width:7px;height:7px;border-radius:50%;background:#5DC8A0;
+       display:inline-block;animation:pulse 2s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.live-badge{font-size:10px;color:rgba(255,255,255,.6)}
+
+/* ── SCREENS ──────────────────────────────────────────────────────────── */
+.screen{display:none;flex:1;overflow:hidden;min-height:0}
+.screen.active{display:flex}
+
+/* ══════════════════════════════════════════════════════
+   INTRO SCREEN
+   ══════════════════════════════════════════════════════ */
+#si{flex-direction:column;align-items:center;padding:1rem;overflow-y:auto}
+.ic{background:#243540;border:1px solid #3A646D;border-top:4px solid #80B4BF;
+    border-radius:6px;max-width:820px;width:100%;padding:1.25rem}
+.ic-h1{font-size:20px;font-weight:700;color:#E8F4F6;line-height:1.2;margin-bottom:1rem}
+.ic-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem}
+.ic-box{background:#1A2830;border:1px solid #3A646D;border-radius:4px;padding:.75rem .85rem}
+.ic-box-t{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+          color:#80B4BF;margin-bottom:.4rem}
+.ic-box p{font-size:12px;color:#B8DDD5;line-height:1.6}
+.regel{display:flex;gap:.5rem;padding:.35rem 0;
+       border-bottom:1px solid rgba(128,180,191,.08);
+       font-size:12px;color:#C8E0E5;line-height:1.5;align-items:flex-start}
+.regel:last-child{border-bottom:none}
+.regel-n{width:20px;height:20px;border-radius:50%;background:#3A646D;color:white;
+         font-size:9px;font-weight:700;display:flex;align-items:center;
+         justify-content:center;flex-shrink:0;margin-top:1px}
+.url-box{background:#fff;border-radius:5px;padding:.75rem;
+         margin-bottom:1rem;text-align:center}
+.url-box-t{font-size:10px;font-weight:600;color:#808B94;text-transform:uppercase;
+           letter-spacing:.05em;margin-bottom:.35rem}
+.url-txt{font-size:13px;font-weight:700;color:#3A646D;word-break:break-all}
+.setup-row{display:flex;align-items:center;gap:.65rem;margin-bottom:.85rem;flex-wrap:wrap}
+.setup-row label{font-size:11px;color:#7A9DA5;font-weight:600}
+.setup-row input{background:#1A2830;border:1px solid #3A646D;border-radius:4px;
+                 padding:.35rem .6rem;font-size:14px;color:#E8F4F6;
+                 font-family:'Montserrat',sans-serif;width:75px}
+.start-btn{display:block;width:100%;padding:1rem;background:#3A646D;color:white;
+           border:none;border-radius:4px;font-size:16px;font-weight:700;
+           cursor:pointer;font-family:'Montserrat',sans-serif;transition:background .15s;
+           touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.start-btn:hover,.start-btn:active{background:#2C4F57}
+.start-note{font-size:10px;color:#7A9DA5;text-align:center;margin-top:.5rem}
+
+/* ══════════════════════════════════════════════════════
+   LIVE SCREEN — DESKTOP (sidebar + content)
+   ══════════════════════════════════════════════════════ */
+#sl{flex-direction:row}
+.sb{width:240px;flex-shrink:0;display:flex;flex-direction:column;gap:.5rem;
+    padding:.6rem;background:#141F26;border-right:1px solid #243540;overflow-y:auto}
+.ct{flex:1;display:flex;flex-direction:column;gap:.5rem;
+    padding:.6rem;overflow-y:auto;min-height:0}
+
+/* Shared panel styles */
+.panel{background:#243540;border:1px solid #3A646D;border-radius:5px;padding:.6rem .7rem}
+.panel-t{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+         color:#80B4BF;margin-bottom:.4rem}
+.stat-big{font-size:36px;font-weight:700;color:#80B4BF;text-align:center;
+          line-height:1;padding:.15rem 0}
+#progress-text{font-size:10px;color:#7A9DA5;text-align:center;margin-top:.15rem}
+
+/* Quality grid */
+.qgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.3rem}
+.qc{text-align:center;padding:.4rem .15rem;border-radius:3px}
+.qc.g{background:#1A3A2A;border:1px solid #3A646D}
+.qc.b{background:#3A1A1A;border:1px solid #8B3A3A}
+.qc.n{background:#3A3520;border:1px solid #8B7A30}
+.qn{font-size:20px;font-weight:700}
+.qn.g{color:#5DC8A0}.qn.b{color:#E05555}.qn.n{color:#D4B840}
+.ql{font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:.1rem}
+.ql.g{color:#5DC8A0}.ql.b{color:#E05555}.ql.n{color:#D4B840}
+
+/* Round buttons */
+.rgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:.25rem}
+.rbtn{background:#1A2830;border:1px solid #3A646D;border-radius:4px;
+      padding:.45rem .15rem;font-size:10px;font-weight:600;color:#7A9DA5;
+      cursor:pointer;text-align:center;font-family:'Montserrat',sans-serif;
+      transition:all .12s;touch-action:manipulation;min-height:36px;
+      display:flex;align-items:center;justify-content:center}
+.rbtn:hover,.rbtn:active{background:#243540;color:#80B4BF}
+.rbtn.active{background:#3A646D;color:white;border-color:#80B4BF}
+.rbtn.answered{border-color:#5DC8A0}
+
+/* Control buttons */
+.crow{display:flex;gap:.35rem;margin-top:.3rem}
+.cbtn{flex:1;padding:.5rem .25rem;font-size:10px;font-weight:700;border:none;
+      border-radius:4px;cursor:pointer;font-family:'Montserrat',sans-serif;
+      transition:background .12s;white-space:nowrap;
+      touch-action:manipulation;min-height:40px}
+.cbtn.p{background:#3A646D;color:white}.cbtn.p:hover,.cbtn.p:active{background:#2C4F57}
+.cbtn.d{background:#5A1A1A;color:#E05555;border:1px solid #8B3A3A}
+.cbtn.d:hover,.cbtn.d:active{background:#6A2020}
+.cbtn.g{background:#1E3A2A;color:#5DC8A0;border:1px solid #3A6A4A;width:100%}
+.cbtn.g:hover,.cbtn.g:active{background:#243A2A}
+
+/* Round info header */
+.ri{background:#243540;border:1px solid #3A646D;border-radius:5px;
+    padding:.65rem .85rem;flex-shrink:0}
+.ri-h{display:flex;align-items:center;justify-content:space-between;
+      margin-bottom:.25rem;gap:.5rem;flex-wrap:wrap}
+.ri-n{font-size:16px;font-weight:700;color:#80B4BF}
+.ri-law{font-size:9px;font-weight:600;background:#1A3A4A;color:#80B4BF;
+        border:1px solid #3A646D;border-radius:3px;padding:2px 7px;white-space:nowrap}
+.ri-m{font-size:12px;font-weight:600;color:#E8F4F6;line-height:1.4}
+
+/* Chart */
+.chart-p{background:#243540;border:1px solid #3A646D;border-radius:5px;
+         padding:.75rem .85rem;flex:1;min-height:120px}
+.chart-t{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+         color:#80B4BF;margin-bottom:.6rem}
+.bar-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem}
+.bar-label{font-size:10.5px;color:#C8E0E5;width:240px;flex-shrink:0;
+           line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;background:#1A2830;border-radius:3px;height:26px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,#3A646D,#80B4BF);
+          border-radius:3px;transition:width .5s ease;min-width:3px}
+.bar-count{font-size:14px;font-weight:700;color:#E8F4F6;width:58px;
+           text-align:right;flex-shrink:0}
+.bar-pct{font-size:10px;color:#7A9DA5;font-weight:400}
+.waiting{text-align:center;color:#7A9DA5;padding:1.5rem;font-size:12px}
+
+/* Notes */
+.notes-p{background:#1E3A2A;border:1px solid #3A6A4A;border-radius:5px;
+         padding:.65rem .85rem;flex-shrink:0}
+.notes-t{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+         color:#5DC8A0;margin-bottom:.4rem}
+.note{display:flex;gap:.35rem;padding:.3rem 0;
+      border-bottom:1px solid rgba(93,200,160,.08);
+      font-size:11.5px;line-height:1.5;color:#B8DDD5}
+.note:last-child{border-bottom:none}
+.ni{font-size:13px;flex-shrink:0}
+
+/* Floating panels */
+.fp{background:#243540;border:1px solid #3A646D;border-radius:5px;
+    padding:.75rem .85rem;flex:1;min-height:0;overflow-y:auto;
+    display:none;flex-direction:column}
+.fp-h{display:flex;align-items:center;justify-content:space-between;
+      margin-bottom:.65rem;flex-shrink:0;gap:.5rem;flex-wrap:wrap}
+.fp-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF}
+.fp-back{background:#1A2830;border:1px solid #3A646D;border-radius:4px;
+         padding:.4rem .8rem;font-size:10px;font-weight:600;color:#80B4BF;
+         cursor:pointer;font-family:'Montserrat',sans-serif;
+         touch-action:manipulation;min-height:36px}
+.dsg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.45rem;margin-bottom:.75rem}
+.ds{border-radius:4px;padding:.55rem;text-align:center}
+.dh{background:#1A2830;border:1px solid #3A646D;border-radius:4px;
+    padding:.65rem .85rem;margin-bottom:.65rem}
+.dh-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+      color:#D4B840;margin-bottom:.3rem}
+.dh-t{font-size:12.5px;font-weight:600;color:#E8F4F6;line-height:1.5}
+.df{margin-bottom:.75rem}
+.df-h{background:#1A3A4A;border-radius:4px 4px 0 0;padding:.5rem .75rem;
+      border:1px solid #3A646D;border-bottom:none}
+.df-t{font-size:11px;font-weight:700;color:#80B4BF}
+.df-r{font-size:9px;color:#7A9DA5;margin-top:.1rem}
+.df-b{background:#1A2830;border:1px solid #3A646D;border-radius:0 0 4px 4px;
+      padding:.55rem .75rem}
+.dq{font-size:11.5px;color:#C8E0E5;padding:.3rem 0;
+    border-bottom:1px solid rgba(128,180,191,.08);line-height:1.55}
+.dq:last-child{border-bottom:none}
+
+/* ══════════════════════════════════════════════════════
+   TABLET / IPAD  (600–1023px)
+   Sidebar kollapser til en vandret kontrolbjælke øverst
+   ══════════════════════════════════════════════════════ */
+@media(max-width:1023px){
+  #sl{flex-direction:column}
+  .sb{width:100%;flex-direction:row;flex-wrap:wrap;
+      border-right:none;border-bottom:1px solid #243540;
+      padding:.5rem;gap:.4rem;overflow-y:visible;overflow-x:auto}
+  .ct{padding:.5rem;gap:.4rem}
+
+  /* Komprimér panels i toolbar */
+  .sb .panel{flex:1;min-width:140px;padding:.45rem .6rem}
+  .panel-t{font-size:8px;margin-bottom:.3rem}
+  .stat-big{font-size:28px}
+  #progress-text{font-size:9px}
+  .qn{font-size:16px}
+  .ql{font-size:7px}
+
+  /* Rundeknapper: 4 kolonner → 6 kolonner på tablet */
+  .rgrid{grid-template-columns:repeat(6,1fr)}
+  .rbtn{font-size:9px;padding:.4rem .1rem;min-height:34px}
+
+  /* Kontrolknapper */
+  .cbtn{font-size:9px;padding:.4rem .2rem;min-height:36px}
+
+  /* Bar labels kortere */
+  .bar-label{width:160px;font-size:10px}
+  .bar-count{font-size:12px;width:48px}
+
+  /* Notes skjules på tablet for at spare plads – vises ved klik */
+  .notes-p{display:none}
+  .notes-toggle{display:block}
+
+  /* Runde-info */
+  .ri{padding:.5rem .75rem}
+  .ri-n{font-size:14px}
+  .ri-m{font-size:11px}
+
+  /* Floating panels fylder hele content-området */
+  .fp{flex:1}
+}
+
+/* ══════════════════════════════════════════════════════
+   MOBIL / IPHONE  (max 599px)
+   Alt stables lodret, store touch-targets
+   ══════════════════════════════════════════════════════ */
+@media(max-width:599px){
+  /* Topbar */
+  .topbar{padding:.5rem .75rem}
+  .tb-title{font-size:10px}
+  #timer-display{font-size:18px}
+  .live-badge{display:none}
+
+  /* Intro */
+  #si{padding:.75rem}
+  .ic{padding:1rem}
+  .ic-h1{font-size:16px}
+  .ic-grid{grid-template-columns:1fr}
+  .url-txt{font-size:12px}
+  .setup-row{gap:.5rem}
+  .start-btn{font-size:15px;padding:1rem}
+
+  /* Situation room grids kollapser */
+  #si [style*="repeat(4,1fr)"]{grid-template-columns:1fr 1fr !important}
+  #si [style*="repeat(3,1fr)"]{grid-template-columns:1fr !important}
+
+  /* Live sidebar: lodret stabelbar, ingen fast bredde */
+  .sb{padding:.5rem;gap:.4rem}
+  .sb .panel{min-width:0;width:100%}
+  .stat-big{font-size:32px}
+
+  /* Rundeknapper: 4 pr. række på mobil */
+  .rgrid{grid-template-columns:repeat(4,1fr);gap:.3rem}
+  .rbtn{font-size:10px;min-height:40px;padding:.45rem .1rem}
+
+  /* Kontrolknapper: store touch-targets */
+  .cbtn{font-size:11px;min-height:44px;padding:.55rem .35rem}
+  .crow{gap:.4rem}
+
+  /* Bar labels forsvinder – kun tal tilbage */
+  .bar-label{width:0;overflow:hidden;padding:0;font-size:0}
+  .bar-row{gap:.35rem}
+  .bar-count{font-size:12px;width:45px}
+
+  /* Floating panels */
+  .fp-h{flex-direction:column;align-items:flex-start}
+  .fp-back{align-self:flex-end}
+  .dsg{grid-template-columns:1fr 1fr 1fr}
+
+  /* Debrief tekststørrelse */
+  .dh-t{font-size:11.5px}
+  .dq{font-size:11px}
+  .df-t{font-size:10px}
+  .df-r{font-size:8px}
+}
+
+/* ══════════════════════════════════════════════════════
+   STORSKÆRM / PROJEKTOR  (min 1400px)
+   Større tekst, mere luft
+   ══════════════════════════════════════════════════════ */
+@media(min-width:1400px){
+  .topbar{padding:.7rem 1.5rem}
+  .tb-title{font-size:13px}
+  #timer-display{font-size:26px}
+
+  .sb{width:280px;gap:.65rem;padding:.85rem}
+  .ct{gap:.65rem;padding:.85rem}
+  .panel-t{font-size:10px}
+  .stat-big{font-size:48px}
+  #progress-text{font-size:12px}
+  .qn{font-size:26px}
+  .ql{font-size:9px}
+
+  .rgrid{grid-template-columns:repeat(4,1fr);gap:.35rem}
+  .rbtn{font-size:12px;padding:.55rem .25rem;min-height:42px}
+  .cbtn{font-size:12px;min-height:46px}
+
+  .ri-n{font-size:20px}
+  .ri-law{font-size:11px;padding:3px 9px}
+  .ri-m{font-size:15px}
+
+  .chart-t{font-size:11px}
+  .bar-label{width:340px;font-size:13px}
+  .bar-track{height:34px}
+  .bar-count{font-size:17px;width:75px}
+  .bar-pct{font-size:12px}
+
+  .notes-t{font-size:11px}
+  .note{font-size:14px;padding:.4rem 0}
+  .ni{font-size:16px}
+
+  .fp-t{font-size:13px}
+  .fp-back{font-size:12px;padding:.5rem 1rem}
+  .dh-t{font-size:15px}
+  .dq{font-size:14px}
+  .df-t{font-size:13px}
+  .df-r{font-size:11px}
+
+  /* Intro */
+  .ic{padding:2rem;max-width:980px}
+  .ic-h1{font-size:28px}
+  .regel{font-size:14px}
+  .start-btn{font-size:18px;padding:1.1rem}
+}
+
+/* Notes toggle knap (kun synlig på tablet) */
+.notes-toggle{display:none;width:100%;padding:.45rem;background:#1E3A2A;
+              color:#5DC8A0;border:1px solid #3A6A4A;border-radius:4px;
+              font-size:10px;font-weight:700;cursor:pointer;
+              font-family:'Montserrat',sans-serif;text-align:center;
+              margin-top:.3rem;touch-action:manipulation}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
 <div class="topbar">
-  <div class="topbar-left">
-    <img class="topbar-logo"
-      src="https://www.eaaa.dk/assets/logo-da-small.svg"
-      alt="EAAA"
-      onerror="this.style.display='none'">
-    <span class="topbar-title">NIS2 Facilitatordashboard</span>
+  <div class="tb-left">
+    <img class="tb-logo" src="https://www.eaaa.dk/assets/logo-da-small.svg" alt="EAAA" onerror="this.style.display='none'">
+    <span class="tb-title">NIS2 Facilitatordashboard</span>
   </div>
-  <div style="display:flex;align-items:center;gap:.75rem">
-    <span class="topbar-badge"><span class="status-dot"></span>Live</span>
-    <span style="font-size:11px;color:rgba(255,255,255,.6)">DataBridge Solutions A/S · Realtid</span>
+  <div class="tb-right">
+    <div class="timer-box">
+      <span class="timer-lbl">Tid</span>
+      <span id="timer-display">00:00</span>
+    </div>
+    <span style="font-size:10px;background:rgba(0,0,0,.2);padding:.28rem .6rem;border-radius:3px;color:rgba(255,255,255,.6)" class="live-badge">
+      <span class="pulse"></span> Live · DataBridge Solutions A/S
+    </span>
   </div>
 </div>
 
-<div class="main">
+<!-- ══ INTRO / ÅBNE ══════════════════════════════════════════════════════ -->
+<div id="si" class="screen active">
+  <div class="ic">
+    <h1 class="ic-h1">NIS2 Ledelsessimulation · DataBridge Solutions A/S</h1>
 
-  <!-- ── SIDEBAR ── -->
-  <div class="sidebar">
+    <!-- SITUATION ROOM ───────────────────────────────────── -->
+    <div style="background:#1A2830;border:1px solid #3A646D;border-radius:5px;margin-bottom:1rem;overflow:hidden">
 
-    <!-- Deltagerantal -->
+      <!-- Header -->
+      <div style="background:#A32D2D;padding:.5rem 1rem;display:flex;align-items:center;gap:.65rem">
+        <span style="font-size:16px">🚨</span>
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.7)">Aktiv hændelse · Mandag kl. 08.12</div>
+          <div style="font-size:15px;font-weight:700;color:white">Ransomware-angreb – DataBridge Solutions A/S</div>
+        </div>
+        <div style="margin-left:auto;background:rgba(0,0,0,.25);border-radius:4px;padding:.3rem .75rem;text-align:center">
+          <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.05em">Status</div>
+          <div style="font-size:12px;font-weight:700;color:#FF9090">KRITISK</div>
+        </div>
+      </div>
+
+      <!-- Faktagrid -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid #3A646D">
+        <div style="padding:.6rem .85rem;border-right:1px solid #3A646D">
+          <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF;margin-bottom:.25rem">Virksomhed</div>
+          <div style="font-size:13px;font-weight:700;color:#E8F4F6">DataBridge Solutions A/S</div>
+          <div style="font-size:10.5px;color:#7A9DA5;margin-top:.15rem">B2B digitale serviceløsninger</div>
+        </div>
+        <div style="padding:.6rem .85rem;border-right:1px solid #3A646D">
+          <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF;margin-bottom:.25rem">Størrelse</div>
+          <div style="font-size:13px;font-weight:700;color:#E8F4F6">52 ansatte</div>
+          <div style="font-size:10.5px;color:#7A9DA5;margin-top:.15rem">~68 mio. kr. omsætning</div>
+        </div>
+        <div style="padding:.6rem .85rem;border-right:1px solid #3A646D">
+          <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF;margin-bottom:.25rem">NIS2-status</div>
+          <div style="font-size:13px;font-weight:700;color:#D4B840">Vigtig enhed</div>
+          <div style="font-size:10.5px;color:#7A9DA5;margin-top:.15rem">§ 5 · Bilag 2</div>
+        </div>
+        <div style="padding:.6rem .85rem">
+          <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF;margin-bottom:.25rem">IT-setup</div>
+          <div style="font-size:13px;font-weight:700;color:#E8F4F6">Fuldt outsourcet</div>
+          <div style="font-size:10.5px;color:#7A9DA5;margin-top:.15rem">TechOps ApS</div>
+        </div>
+      </div>
+
+      <!-- Angrebsvektor -->
+      <div style="padding:.6rem .85rem;border-bottom:1px solid #3A646D">
+        <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF;margin-bottom:.4rem">Angrebsvektor</div>
+        <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+          <div style="background:#243540;border:1px solid #3A646D;border-radius:4px;padding:.3rem .65rem;font-size:11px;font-weight:600;color:#C8E0E5">CloudHost GmbH 🇩🇪</div>
+          <div style="font-size:11px;color:#A32D2D;font-weight:700">→</div>
+          <div style="background:#243540;border:1px solid #3A646D;border-radius:4px;padding:.3rem .65rem;font-size:11px;font-weight:600;color:#C8E0E5">TechOps ApS</div>
+          <div style="font-size:11px;color:#A32D2D;font-weight:700">→</div>
+          <div style="background:#3A1A1A;border:1px solid #A32D2D;border-radius:4px;padding:.3rem .65rem;font-size:11px;font-weight:700;color:#FF9090">DataBridge · 6 drev krypteret</div>
+        </div>
+      </div>
+
+      <!-- Nøglepersoner -->
+      <div style="padding:.6rem .85rem;border-bottom:1px solid #3A646D">
+        <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF;margin-bottom:.4rem">Nøglepersoner – I er dette team</div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <div style="background:#243540;border:1px solid #80B4BF;border-radius:4px;padding:.3rem .75rem;font-size:11px;color:#E8F4F6"><strong>Mette Sørensen</strong> · CEO</div>
+          <div style="background:#243540;border:1px solid #3A646D;border-radius:4px;padding:.3rem .75rem;font-size:11px;color:#C8E0E5"><strong>Jakob Dahl</strong> · CFO</div>
+          <div style="background:#243540;border:1px solid #3A646D;border-radius:4px;padding:.3rem .75rem;font-size:11px;color:#C8E0E5"><strong>Line Kristensen</strong> · Head of Operations</div>
+          <div style="background:#243540;border:1px solid #3A646D;border-radius:4px;padding:.3rem .75rem;font-size:11px;color:#C8E0E5"><strong>Anders Møller</strong> · Juridisk rådgiver</div>
+          <div style="background:#243540;border:1px solid #3A646D;border-radius:4px;padding:.3rem .75rem;font-size:11px;color:#C8E0E5"><strong>Hanne Vestergaard</strong> · Bestyrelsesformand</div>
+        </div>
+      </div>
+
+      <!-- Frister der løber -->
+      <div style="padding:.6rem .85rem;display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem">
+        <div style="background:#3A1A1A;border:1px solid #A32D2D;border-radius:4px;padding:.4rem .65rem">
+          <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#FF9090;margin-bottom:.15rem">⏱ NIS2 Tidlig varsling</div>
+          <div style="font-size:14px;font-weight:700;color:white">24 timer</div>
+          <div style="font-size:9.5px;color:#C89090;margin-top:.1rem">fra kl. 08.12 · § 13</div>
+        </div>
+        <div style="background:#3A2820;border:1px solid #8B5A30;border-radius:4px;padding:.4rem .65rem">
+          <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#D4A060;margin-bottom:.15rem">⏱ GDPR Datatilsynet</div>
+          <div style="font-size:14px;font-weight:700;color:white">72 timer</div>
+          <div style="font-size:9.5px;color:#C8A080;margin-top:.1rem">fra begrundet mistanke · art. 33</div>
+        </div>
+        <div style="background:#1A3A2A;border:1px solid #3A6A4A;border-radius:4px;padding:.4rem .65rem">
+          <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#5DC8A0;margin-bottom:.15rem">📋 Endelig rapport</div>
+          <div style="font-size:14px;font-weight:700;color:white">1 måned</div>
+          <div style="font-size:9.5px;color:#80C8A0;margin-top:.1rem">hændelsesrapport · § 13</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spilleregler -->
+    <div class="ic-grid" style="margin-bottom:1rem">
+      <div class="ic-box">
+        <div class="ic-box-t">Jeres rolle</div>
+        <div class="regel"><div class="regel-n">I</div>I er DataBridges lederteam – Mette, Jakob og Line</div>
+        <div class="regel"><div class="regel-n">II</div>Diskuter i gruppen – ét svar per terminal</div>
+        <div class="regel"><div class="regel-n">III</div>Der er ingen facit – men der er konsekvenser</div>
+        <div class="regel"><div class="regel-n">IV</div>I har <strong style="color:#80B4BF">ca. 2 minutter per spørgsmål</strong> – 11 spørgsmål over 25 minutter</div>
+      </div>
+      <div class="ic-box">
+        <div class="ic-box-t">Sådan virker det</div>
+        <div class="regel"><div class="regel-n">1</div>Læs scenariet grundigt – det rummer vigtige detaljer</div>
+        <div class="regel"><div class="regel-n">2</div>Vælg et svar – I får feedback og NIS2-indsigt bagefter</div>
+        <div class="regel"><div class="regel-n">3</div>Rapport med beslutningsoversigt kan hentes som PDF til sidst</div>
+      </div>
+    </div>
+
+    <div class="url-box">
+      <div class="url-box-t">Scan QR-koden eller skriv adressen</div>
+      <div id="qrcode" style="display:flex;justify-content:center;margin:.5rem 0"></div>
+      <div class="url-txt">https://Funclausen.github.io/nis2-simulation/</div>
+    </div>
+
+    <div class="setup-row">
+      <label>Antal grupper / terminaler:</label>
+      <input type="number" id="expected-input" min="1" max="50" value="15" onchange="setExpected(this.value)">
+      <span style="font-size:10px;color:#7A9DA5">Bruges til svarprocent undervejs</span>
+    </div>
+
+    <button class="start-btn" onclick="startSession()">▶ Start simulationssessionen – timer starter nu</button>
+    <p class="start-note">Alle tidligere svar nulstilles automatisk ved start · Simulationen tager ca. 25–30 minutter</p>
+  </div>
+</div>
+
+<!-- ══ LIVE / ORDNE ══════════════════════════════════════════════════════ -->
+<div id="sl" class="screen"><!-- Ordne -->
+
+  <div class="sb">
     <div class="panel">
-      <div class="panel-title">Deltagere der har svaret</div>
+      <div class="panel-t">Svar modtaget</div>
       <div class="stat-big" id="participant-count">0</div>
       <div id="progress-text">Afventer svar...</div>
-      <div style="margin-top:.65rem">
-        <div class="input-row">
-          <label>Forventet antal:</label>
-          <input type="number" min="1" max="100" value="15" onchange="setExpected(this.value)" style="width:60px">
-        </div>
+      <div style="display:flex;align-items:center;gap:.35rem;margin-top:.35rem">
+        <label style="font-size:9px;color:#7A9DA5">Forventet:</label>
+        <input type="number" min="1" max="100" value="15" onchange="setExpected(this.value)" style="width:45px;background:#1A2830;border:1px solid #3A646D;border-radius:3px;padding:.25rem .4rem;font-size:11px;color:#E8F4F6;font-family:'Montserrat',sans-serif">
       </div>
     </div>
 
-    <!-- Svarfordeling -->
     <div class="panel">
-      <div class="panel-title">Svarfordeling</div>
-      <div class="quality-grid">
-        <div class="q-cell good">
-          <div class="q-num good" id="count-good">0</div>
-          <div class="q-lbl good">Bedste</div>
-        </div>
-        <div class="q-cell neutral">
-          <div class="q-num neutral" id="count-neutral">0</div>
-          <div class="q-lbl neutral">Neutralt</div>
-        </div>
-        <div class="q-cell bad">
-          <div class="q-num bad" id="count-bad">0</div>
-          <div class="q-lbl bad">Risikabelt</div>
-        </div>
+      <div class="panel-t">Fordeling denne runde</div>
+      <div class="qgrid">
+        <div class="qc g"><div class="qn g" id="count-good">0</div><div class="ql g">Bedste</div></div>
+        <div class="qc n"><div class="qn n" id="count-neutral">0</div><div class="ql n">Neutral</div></div>
+        <div class="qc b"><div class="qn b" id="count-bad">0</div><div class="ql b">Kritisk</div></div>
       </div>
     </div>
 
-    <!-- Rundestyring -->
     <div class="panel">
-      <div class="panel-title">Skift aktiv runde</div>
-      <div class="round-grid" id="round-buttons"></div>
-      <div class="ctrl-row" style="margin-top:.65rem">
-        <button class="ctrl-btn primary" onclick="prevRound()">← Forrige</button>
-        <button class="ctrl-btn primary" onclick="nextRound()">Næste →</button>
-      </div>
-      <div class="ctrl-row">
-        <button class="ctrl-btn danger" onclick="resetSession()">↺ Nulstil session</button>
-      <button class="ctrl-btn primary" onclick="showOverview()" style="margin-top:.3rem;background:#1E3A2A;border:1px solid #3A6A4A;color:#5DC8A0">⊞ Samlet oversigt</button>
+      <div class="panel-t">Runder ← →</div>
+      <div class="rgrid" id="round-buttons"></div>
+      <div class="crow">
+        <button class="cbtn p" onclick="prevRound()">← Forrige</button>
+        <button class="cbtn p" onclick="nextRound()">Næste →</button>
       </div>
     </div>
 
+    <div class="panel">
+      <div class="panel-t">Session</div>
+      <div style="display:flex;flex-direction:column;gap:.3rem">
+        <button class="cbtn g" onclick="showPanel('debrief')">⊡ Afslut → Debriefing</button>
+        <button class="cbtn g" onclick="showPanel('overview')">⊞ Samlet oversigt</button>
+        <button class="cbtn d" onclick="resetSession()" style="width:100%;margin-top:.1rem">↺ Nulstil / Intro</button>
+      </div>
+    </div>
   </div>
 
-  <!-- ── CONTENT ── -->
-  <div class="content">
-
-    <!-- Aktiv runde info -->
-    <div class="round-info">
-      <div class="round-info-header">
-        <div class="round-number" id="current-round-label">Runde 1 af 11</div>
-        <span class="round-law" id="round-law"></span>
+  <div class="ct">
+    <div class="ri">
+      <div class="ri-h">
+        <div class="ri-n" id="current-round-label">Runde 1 af 11</div>
+        <span class="ri-law" id="round-law"></span>
       </div>
-      <div class="round-module" id="round-module"></div>
+      <div class="ri-m" id="round-module"></div>
     </div>
 
-    <!-- Søjlediagram -->
-    <!-- Samlet oversigt panel (skjult som standard) -->
-    <div id="overview-panel" style="display:none;background:#243540;border:1px solid #3A646D;border-radius:6px;padding:1rem 1.25rem;flex:1;overflow-y:auto">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#80B4BF">Samlet oversigt – alle runder</div>
-        <button onclick="hideOverview()" style="background:#1A2830;border:1px solid #3A646D;border-radius:4px;padding:.3rem .65rem;font-size:10px;font-weight:600;color:#80B4BF;cursor:pointer;font-family:'Montserrat',sans-serif">← Tilbage</button>
+    <!-- Chart -->
+    <div id="panel-chart" style="display:flex;flex-direction:column;gap:.5rem;flex:1;min-height:0">
+      <div class="chart-p">
+        <div class="chart-t">Svarfordeling – hvad valgte grupperne?</div>
+        <div id="bars"><div class="waiting">Afventer at deltagerne svarer...</div></div>
       </div>
-      <div id="overview-content"></div>
+      <div class="notes-p" id="facilitator-notes"></div>
+      <button class="notes-toggle" onclick="toggleNotes()" id="notes-toggle-btn">💡 Vis facilitatornotes</button>
     </div>
 
-    <div id="chart-wrapper">
-    <div class="chart-panel">
-      <div class="chart-title">Svarfordeling – hvad valgte deltagerne?</div>
-      <div id="bars"><div class="waiting">Afventer at deltagerne svarer på runde 1...</div></div>
+    <!-- Debrief -->
+    <div id="panel-debrief" class="fp">
+      <div class="fp-h">
+        <div class="fp-t">Lukke – Debriefing og afrunding</div>
+        <button class="fp-back" onclick="showPanel('chart')">← Tilbage til live</button>
+      </div>
+      <div id="debrief-content" style="overflow-y:auto;flex:1"></div>
     </div>
 
-    <!-- Facilitatornotes -->
-    <div class="notes-panel" id="facilitator-notes"></div>
-
+    <!-- Overview -->
+    <div id="panel-overview" class="fp">
+      <div class="fp-h">
+        <div class="fp-t">Samlet oversigt – alle 11 runder</div>
+        <button class="fp-back" onclick="showPanel('chart')">← Tilbage</button>
+      </div>
+      <div id="overview-content" style="overflow-y:auto;flex:1"></div>
+    </div>
   </div>
 </div>
 
 <script>
-// ── RUNDE-METADATA ────────────────────────────────────────────────────────
-const ROUND_META = [
-  {
-    time:"Mandag kl. 08.12", module:"Fase 1 – Opdagelse og første respons",
-    lawRef:"§ 7 – Ledelsesansvar",
-    notes:[
-      {icon:"💡", text:"Typisk fejl: Ledere stoler blindt på leverandøren og etablerer ingen intern ledelsesstruktur fra start."},
-      {icon:"❓", text:"Åbent spørgsmål: Hvem i jeres organisation ville Mettes rolle falde til i dag? Er der én ansvarlig?"},
-      {icon:"⚖️", text:"NIS2-pointe: § 7 kræver aktivt ledelsestilsyn – ikke passiv orientering. Dokumentation starter her."},
-      {icon:"🔄", text:"Transfer: Har I en intern eskalationsplan der aktiveres inden for de første 30 minutter af en hændelse?"}
-    ]
-  },
-  {
-    time:"Mandag kl. 08.20", module:"Fase 2 – ISMS: Risiko og informationsaktiver",
-    lawRef:"§ 6 stk. 1 nr. 1 – Risikostyring",
-    notes:[
-      {icon:"💡", text:"Typisk fejl: 'Vi ved godt hvad der er vigtigt' – men ingen har skrevet det ned, og IT-leverandøren ved det ikke."},
-      {icon:"❓", text:"Åbent spørgsmål: Hvad er jeres tre mest forretningskritiske systemer? Kan alle i lokalet svare det samme?"},
-      {icon:"⚖️", text:"NIS2-pointe: Risikovurdering og aktivoversigt er ikke IT's opgave – det er ledelsens godkendelsesansvar."},
-      {icon:"🔄", text:"Transfer: Hvor lang tid ville det tage jer at lave en tilsvarende nødpræget aktivoversigt i dag?"}
-    ]
-  },
-  {
-    time:"Mandag kl. 08.30", module:"Fase 1 – Opdagelse og første respons",
-    lawRef:"§ 10 – Registreringspligt",
-    notes:[
-      {icon:"💡", text:"Typisk fejl: Man antager at 'nogen anden' har styr på registreringen. Registreringspligten er enhedens eget ansvar."},
-      {icon:"❓", text:"Åbent spørgsmål: Er jeres organisation registreret på virk.dk? Hvem ved det med sikkerhed?"},
-      {icon:"⚖️", text:"NIS2-pointe: Fristen er 1. oktober 2025. En igangværende hændelse kræver under alle omstændigheder kontakt til myndighederne via virk.dk."},
-      {icon:"🔄", text:"Transfer: Hvem i jeres organisation har adgang til virk.dk og ansvaret for registrering?"}
-    ]
-  },
-  {
-    time:"Mandag kl. 08.45", module:"Fase 1 – Opdagelse og første respons",
-    lawRef:"§ 6 stk. 2 – Pligt til at handle · § 7",
-    notes:[
-      {icon:"💡", text:"Typisk fejl: 'IT tager sig af det' – men NIS2 § 7 kræver at ledelsen godkender og overvåger foranstaltningerne."},
-      {icon:"❓", text:"Åbent spørgsmål: Hvilke tre roller ville I aktivere med det samme? Er rollerne kendte og øvede?"},
-      {icon:"⚖️", text:"NIS2-pointe: Ledelsesansvar kan ikke uddelegeres til leverandøren. Det juridiske ansvar forbliver hos direktionen."},
-      {icon:"🔄", text:"Transfer: Har I en krisestab-model med navngivne roller – ikke bare funktioner?"}
-    ]
-  },
-  {
-    time:"Mandag kl. 09.20", module:"Fase 3 – Leverandørkæden",
-    lawRef:"§ 6 stk. 1 nr. 4 – Forsyningskædesikkerhed",
-    notes:[
-      {icon:"💡", text:"Typisk fejl: Man antager at leverandørens leverandør er leverandørens problem. NIS2 siger det modsatte."},
-      {icon:"❓", text:"Åbent spørgsmål: Kender I jeres IT-leverandørs underleverandører? Har I krævet oplysninger om dem?"},
-      {icon:"⚖️", text:"NIS2-pointe: Forsyningskædesikkerhed er jeres ansvar. I kan ikke gemme jer bag TechOps."},
-      {icon:"🔄", text:"Transfer: Hvornår så I sidst på sikkerhedsbestemmelserne i jeres IT-kontrakter?"}
-    ]
-  },
-  {
-    time:"Mandag kl. 10.00", module:"Fase 4 – Underretningspligter",
-    lawRef:"§ 13 · GDPR art. 33",
-    notes:[
-      {icon:"💡", text:"Typisk fejl: Man venter på fuld klarhed. Loven kræver alene begrundet mistanke – ikke bevis."},
-      {icon:"❓", text:"Åbent spørgsmål: Hvem i jeres organisation har mandat til at sende en tidlig varsling til myndighederne?"},
-      {icon:"⚖️", text:"NIS2-pointe: To separate frister – NIS2 (24 timer) og GDPR (72 timer). Begge løber fra kendskabstidspunktet."},
-      {icon:"🔄", text:"Transfer: Har I en tjekliste for hvad en NIS2-tidlig varsling skal indeholde?"}
-    ]
-  },
-  {
-    time:"Mandag kl. 10.30", module:"Fase 5 – Kommunikation og omdømme",
-    lawRef:"§ 15 – Underretning af modtagere",
-    notes:[
-      {icon:"💡", text:"Typisk fejl: Alle taler med alle – tre ledere giver tre versioner. Journalisten skriver den fjerde."},
-      {icon:"❓", text:"Åbent spørgsmål: Hvem er jeres krisekommunikationsansvarlige – og hvad sker der hvis de er på ferie?"},
-      {icon:"⚖️", text:"NIS2-pointe: § 15 kræver koordineret underretning af berørte modtagere. Ukontrolleret kommunikation er en selvstændig risiko."},
-      {icon:"🔄", text:"Transfer: Har I en krisekommunikationsplan med én udpeget talsperson og godkendelsesprocedure?"}
-    ]
-  },
-  {
-    time:"Mandag kl. 11.00", module:"Fase 6 – Ledelsesansvar og governance",
-    lawRef:"§ 7 · Art. 20 NIS2-direktivet",
-    notes:[
-      {icon:"💡", text:"Typisk fejl: Bestyrelsen informeres for sent eller via leverandørens tekniske rapport – ikke via ledelsens vurdering."},
-      {icon:"❓", text:"Åbent spørgsmål: Hvornår ville I informere jeres bestyrelse? Og hvad ville I sige?"},
-      {icon:"⚖️", text:"NIS2-pointe: Art. 20: ledelsesorganer kan gøres personligt ansvarlige. Bestyrelsesinformation er en forpligtelse."},
-      {icon:"🔄", text:"Transfer: Har bestyrelsen nogensinde diskuteret NIS2-risiko og ledelsens personlige ansvar?"}
-    ]
-  },
-  {
-    time:"Mandag kl. 11.30", module:"Fase 7 – Myndighedskontakt og tilsyn",
-    lawRef:"§ 21 · § 22 · § 23",
-    notes:[
-      {icon:"💡", text:"Typisk fejl: Man forsøger at minimere hvad man siger til tilsynet. Det tolkes som manglende samarbejde."},
-      {icon:"❓", text:"Åbent spørgsmål: Hvem hos jer ville tage telefonen hvis Sikkerhedsstyrelsen ringede?"},
-      {icon:"⚖️", text:"NIS2-pointe: § 21 giver tilsynet lovpligtige krav. § 23 giver mulighed for midlertidig suspension af direktøren."},
-      {icon:"🔄", text:"Transfer: Hvem i jeres organisation har mandat og viden til at håndtere et tilsynsopkald?"}
-    ]
-  },
-  {
-    time:"Mandag kl. 12.00", module:"Fase 7 – Rapporteringsfrister",
-    lawRef:"§ 13 – 24t · 72t · 1 måned",
-    notes:[
-      {icon:"💡", text:"Typisk fejl: Man uddelegerer rapportering til IT-leverandøren. Det er DataBridges juridiske forpligtelse – ikke TechOps'."},
-      {icon:"❓", text:"Åbent spørgsmål: Hvem ville udarbejde jeres NIS2-underretning? Har I en skabelon?"},
-      {icon:"⚖️", text:"NIS2-pointe: Trinvis rapportering. Tidlig varsling (24t) → underretning (72t) → endelig rapport (1 måned). Alle tre er selvstændige forpligtelser."},
-      {icon:"🔄", text:"Transfer: Har I nogensinde testet om I kan producere en underretning inden for 24 timer?"}
-    ]
-  },
-  {
-    time:"Mandag eftermiddag", module:"Fase 8 – Opfølgning og fremtidig compliance",
-    lawRef:"§ 6 · § 7",
-    notes:[
-      {icon:"💡", text:"Typisk fejl: 'Det vigtigste er at systemerne kører igen.' NIS2 siger at hændelsen ikke er afsluttet juridisk."},
-      {icon:"❓", text:"Åbent spørgsmål: Hvad er jeres organisations største NIS2-hul akkurat nu – efter at have gennemgået dette?"},
-      {icon:"⚖️", text:"NIS2-pointe: Endelig hændelsesrapport skal indsendes inden 1 måned. Manglende opfølgning er en selvstændig overtrædelse."},
-      {icon:"🔄", text:"Transfer: Hvad er de tre første ting I vil gøre i jeres organisation inden for de næste 30 dage?"}
-    ]
-  }
+function showScreen(n){
+  document.getElementById('si').classList.toggle('active',n==='intro');
+  document.getElementById('sl').classList.toggle('active',n==='live');
+}
+function showPanel(n){
+  ['chart','debrief','overview'].forEach(p=>{
+    const el=document.getElementById('panel-'+p);
+    if(!el) return;
+    const show=p===n;
+    el.style.display=show?(p==='chart'?'flex':'flex'):'none';
+    if(show&&p!=='chart') el.style.flexDirection='column';
+  });
+  if(n==='debrief') renderDebrief();
+  if(n==='overview') renderOverview();
+}
+
+const ROUND_META=[
+  {time:"Mandag kl. 08.12",module:"Fase 1 – Opdagelse og første respons",lawRef:"§ 7",
+   notes:[{icon:"💡",text:"Typisk fejl: Ledere afventer leverandøren og etablerer ingen intern struktur."},{icon:"❓",text:"Hvem i jeres organisation har Mettes rolle – og er det aftalt på forhånd?"},{icon:"⚖️",text:"NIS2-pointe: § 7 kræver aktivt tilsyn og dokumentation fra minut ét."},{icon:"🔄",text:"Har I en eskalationsplan der aktiveres inden for 30 minutter?"}],
+   debrief:"Hvad siger fordelingen om jeres organisations parathed til at tage ledelsesejerskab fra starten?"},
+  {time:"Mandag kl. 08.20",module:"Fase 2 – ISMS og informationsaktiver",lawRef:"§ 6 stk. 1 nr. 1",
+   notes:[{icon:"💡",text:"Typisk fejl: 'Vi ved godt hvad der er vigtigt' – men ingen har skrevet det ned."},{icon:"❓",text:"Hvad er jeres tre mest forretningskritiske systemer – kan alle svare ens?"},{icon:"⚖️",text:"Aktivoversigt er ledelsens godkendelsesansvar – ikke IT-afdelingens."},{icon:"🔄",text:"Hvor lang tid ville det tage jer at lave en nødpræget aktivoversigt i dag?"}],
+   debrief:"Aktivoversigten i R2 var afgørende i R5, R6 og R10. Hvad siger det om værdien af at have lavet forarbejdet inden krisen?"},
+  {time:"Mandag kl. 08.30",module:"Fase 1 – Registreringspligt",lawRef:"§ 10",
+   notes:[{icon:"💡",text:"Typisk fejl: Man antager at nogen anden har styr på registreringen."},{icon:"❓",text:"Er jeres organisation registreret på virk.dk – og hvem ved det med sikkerhed?"},{icon:"⚖️",text:"Fristen er 1. oktober 2025. Hændelsen kræver kontakt til myndigheder via virk.dk."},{icon:"🔄",text:"Hvem har adgang til virk.dk og ansvaret for NIS2-registrering?"}],
+   debrief:"Mange organisationer kender ikke deres NIS2-status. Hvad er det første I tjekker i jeres egen organisation?"},
+  {time:"Mandag kl. 08.45",module:"Fase 1 – Krisestab og beredskab",lawRef:"§ 6 stk. 2 · § 7",
+   notes:[{icon:"💡",text:"Typisk fejl: IT tager sig af det – men NIS2 kræver at ledelsen godkender og overvåger."},{icon:"❓",text:"Hvilke tre roller aktiverer I med det samme – og er de kendte og øvede?"},{icon:"⚖️",text:"Ledelsesansvar kan ikke uddelegeres. Juridisk ansvar forbliver hos direktionen."},{icon:"🔄",text:"Har I en krisestab-model med navngivne roller – ikke bare funktionsbeskrivelser?"}],
+   debrief:"Hvor mange valgte at overlade det til TechOps? Det er en stærk samtaleåbner om beredskab."},
+  {time:"Mandag kl. 09.20",module:"Fase 3 – Leverandørkædesikkerhed",lawRef:"§ 6 stk. 1 nr. 4",
+   notes:[{icon:"💡",text:"Typisk fejl: Leverandørens leverandør er leverandørens problem – nej, det er jeres."},{icon:"❓",text:"Kender I jeres IT-leverandørs underleverandører og deres sikkerhedsniveau?"},{icon:"⚖️",text:"NIS2: Forsyningskædesikkerhed er jeres ansvar – I kan ikke gemme jer bag TechOps."},{icon:"🔄",text:"Hvornår så I sidst på sikkerhedsbestemmelserne i jeres IT-kontrakter?"}],
+   debrief:"CloudHost var det svageste led. Hvem er det svageste led i jeres forsyningskæde – og ved I det?"},
+  {time:"Mandag kl. 10.00",module:"Fase 4 – Underretningspligter og frister",lawRef:"§ 13 · GDPR art. 33",
+   notes:[{icon:"💡",text:"Typisk fejl: Man venter på fuld klarhed. Loven kræver kun begrundet mistanke."},{icon:"❓",text:"Hvem i jeres organisation har mandat til at sende en NIS2-tidlig varsling?"},{icon:"⚖️",text:"To separate frister: NIS2 (24t) og GDPR (72t) løber fra kendskabstidspunktet."},{icon:"🔄",text:"Har I en tjekliste for hvad en NIS2-tidlig varsling skal indeholde?"}],
+   debrief:"Frister er objektive. Hvad er det organisatoriske der gør 24-timersfristen svær – og hvad kræver det at løse det?"},
+  {time:"Mandag kl. 10.30",module:"Fase 5 – Kommunikation og omdømme",lawRef:"§ 15",
+   notes:[{icon:"💡",text:"Typisk fejl: Tre ledere, tre versioner – journalisten skriver den fjerde."},{icon:"❓",text:"Hvem er jeres krisekommunikationsansvarlige – og hvad sker der hvis de er på ferie?"},{icon:"⚖️",text:"§ 15: koordineret underretning. Ukontrolleret kommunikation er en selvstændig risiko."},{icon:"🔄",text:"Har I en krisekommunikationsplan med én udpeget talsperson?"}],
+   debrief:"Krisekommunikation er en ledelsesdisciplin. Hvad ville I sige til kunderne i dag hvis dette skete?"},
+  {time:"Mandag kl. 11.00",module:"Fase 6 – Ledelsesansvar og governance",lawRef:"§ 7 · Art. 20",
+   notes:[{icon:"💡",text:"Typisk fejl: Bestyrelsen informeres for sent eller via leverandørens tekniske rapport."},{icon:"❓",text:"Hvornår ville I informere jeres bestyrelse – og hvad ville I sige?"},{icon:"⚖️",text:"Art. 20: ledelsesorganer kan gøres personligt ansvarlige. Bestyrelsesinformation er en forpligtelse."},{icon:"🔄",text:"Har bestyrelsen diskuteret NIS2-risiko og det personlige ledelsesansvar?"}],
+   debrief:"Personligt direktøransvar er nyt i NIS2. Er bestyrelsen klar til den samtale?"},
+  {time:"Mandag kl. 11.30",module:"Fase 7 – Myndighedskontakt og tilsyn",lawRef:"§ 21 · § 22 · § 23",
+   notes:[{icon:"💡",text:"Typisk fejl: Man minimerer hvad man siger til tilsynet – det tolkes som manglende samarbejde."},{icon:"❓",text:"Hvem hos jer tager telefonen hvis Sikkerhedsstyrelsen ringer?"},{icon:"⚖️",text:"§ 23: midlertidig suspension af direktøren. Det er lovtekst – ikke en trussel."},{icon:"🔄",text:"Hvem har mandat og viden til at håndtere et tilsynsopkald?"}],
+   debrief:"§ 23 overrasker mange. Hvad ændrer det personlige ansvar ved jeres tilgang til NIS2?"},
+  {time:"Mandag kl. 12.00",module:"Fase 7 – Rapporteringsfrister",lawRef:"§ 13 – 24t · 72t · 1 måned",
+   notes:[{icon:"💡",text:"Typisk fejl: Rapportering uddelegeres til IT-leverandøren. Det er en lovpligtig forpligtelse for DataBridge."},{icon:"❓",text:"Hvem udarbejder jeres NIS2-underretning – har I en skabelon?"},{icon:"⚖️",text:"Trinvis rapportering: tidlig varsling (24t) → underretning (72t) → endelig rapport (1 måned)."},{icon:"🔄",text:"Har I nogensinde testet om I kan producere en underretning inden for 24 timer?"}],
+   debrief:"Rapportering kræver forberedelse. Hvad skal konkret være på plads for at 24-timersfristen er realistisk?"},
+  {time:"Mandag eftermiddag",module:"Fase 8 – Opfølgning og fremtidig compliance",lawRef:"§ 6 · § 7 · § 13",
+   notes:[{icon:"💡",text:"Typisk fejl: Systemerne kører igen – så er hændelsen afsluttet. NIS2 siger noget andet."},{icon:"❓",text:"Hvad er jeres organisations største NIS2-hul akkurat nu?"},{icon:"⚖️",text:"Endelig rapport inden 1 måned. Manglende opfølgning er en selvstændig overtrædelse."},{icon:"🔄",text:"Hvad er de tre første ting I vil gøre inden for de næste 30 dage?"}],
+   debrief:"Afslut med den vigtigste samtale: Hvad er det ene konkrete skridt I forpligter jer til inden for 14 dage?"},
 ];
 
-// Byg runde-knapper
-const btnContainer = document.getElementById('round-buttons');
-ROUND_META.forEach((r, i) => {
-  const btn = document.createElement('button');
-  btn.className = 'round-btn';
-  btn.textContent = `R${i+1}`;
-  btn.title = r.module;
-  btn.onclick = () => window.setRound(i);
-  btn.id = `rbtn-${i}`;
-  btnContainer.appendChild(btn);
-});
-
-// Opdater runde-knap styling via window.setRound
-const origSetRound = window.setRound;
-window.setRound = function(r) {
-  document.querySelectorAll('.round-btn').forEach((btn, i) => {
-    btn.classList.toggle('active', i === r);
-  });
-  // Opdater facilitatornotes
-  const notes = ROUND_META[r].notes;
-  const notesPanel = document.getElementById('facilitator-notes');
-  notesPanel.innerHTML = `
-    <div class="notes-title">Facilitatornotes – Runde ${r+1}</div>
-    ${notes.map(n => `<div class="note-item"><span class="note-icon">${n.icon}</span><span>${n.text}</span></div>`).join('')}
-  `;
-  if(origSetRound) origSetRound(r);
-};
-
-window.prevRound = function() {
-  const btns = document.querySelectorAll('.round-btn');
-  const active = [...btns].findIndex(b => b.classList.contains('active'));
-  if(active > 0) window.setRound(active - 1);
-};
-window.nextRound = function() {
-  const btns = document.querySelectorAll('.round-btn');
-  const active = [...btns].findIndex(b => b.classList.contains('active'));
-  if(active < btns.length - 1) window.setRound(active + 1);
-};
-
-// Initialiser første runde
-window.addEventListener('load', () => {
-  setTimeout(() => window.setRound(0), 100);
-  window.expectedParticipants = 15;
-});
-
-// Keyboard shortcuts
-document.addEventListener('keydown', e => {
-  if(e.key === 'ArrowRight') window.nextRound();
-  if(e.key === 'ArrowLeft') window.prevRound();
-});
-
-function showOverview() {
-  document.getElementById('overview-panel').style.display = 'block';
-  document.getElementById('chart-wrapper').style.display = 'none';
-  renderOverview();
+function updateNotes(r){
+  const n=ROUND_META[r].notes;
+  document.getElementById('facilitator-notes').innerHTML=
+    `<div class="notes-t">Facilitatornotes · Runde ${r+1}</div>${n.map(x=>`<div class="note"><span class="ni">${x.icon}</span><span>${x.text}</span></div>`).join('')}`;
 }
 
-function hideOverview() {
-  document.getElementById('overview-panel').style.display = 'none';
-  document.getElementById('chart-wrapper').style.display = 'block';
+function prevRound(){
+  const a=[...document.querySelectorAll('.rbtn')].findIndex(b=>b.classList.contains('active'));
+  if(a>0)window.setRound(a-1);
+}
+function nextRound(){
+  const a=[...document.querySelectorAll('.rbtn')].findIndex(b=>b.classList.contains('active'));
+  if(a<10)window.setRound(a+1);
 }
 
-function renderOverview() {
-  const container = document.getElementById('overview-content');
-  const rows = ROUND_META.map((r, ri) => {
-    const roundAnswers = allAnswers[ri] || {};
-    const entries = Object.values(roundAnswers);
-    const total = entries.length;
-
-    if (!total) {
-      return `<div style="display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-bottom:1px solid rgba(128,180,191,.15)">
-        <div style="width:28px;height:28px;border-radius:4px;background:#1A2830;border:1px solid #3A646D;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#3A646D;flex-shrink:0">${ri+1}</div>
-        <div style="flex:1">
-          <div style="font-size:11px;font-weight:600;color:#7A9DA5">${r.time} · ${r.module}</div>
-        </div>
-        <div style="font-size:11px;color:#3A646D;font-style:italic">Ingen svar endnu</div>
-      </div>`;
-    }
-
-    const counts = {good:0, bad:0, neutral:0};
-    entries.forEach(e => counts[e.quality] = (counts[e.quality]||0)+1);
-    const dominant = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
-    const pctGood = Math.round((counts.good/total)*100);
-    const pctBad = Math.round((counts.bad/total)*100);
-    const pctNeutral = Math.round((counts.neutral/total)*100);
-
-    // Find mest valgte shortText
-    const textCounts = {};
-    entries.forEach(e => {
-      const k = e.shortText || '–';
-      textCounts[k] = (textCounts[k]||0)+1;
+window.addEventListener('DOMContentLoaded',()=>{
+  // Generer QR-kode automatisk
+  if(typeof QRCode !== 'undefined') {
+    new QRCode(document.getElementById('qrcode'), {
+      text: 'https://Funclausen.github.io/nis2-simulation/',
+      width: 160,
+      height: 160,
+      colorDark: '#3A646D',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
     });
-    const topChoice = Object.entries(textCounts).sort((a,b)=>b[1]-a[1])[0];
+  }
+  const c=document.getElementById('round-buttons');
+  ROUND_META.forEach((r,i)=>{
+    const b=document.createElement('button');
+    b.className='rbtn';b.textContent='R'+(i+1);b.title=r.module;
+    b.onclick=()=>window.setRound(i);c.appendChild(b);
+  });
+  showPanel('chart');
+});
 
-    return `<div style="padding:.65rem 0;border-bottom:1px solid rgba(128,180,191,.12)">
-      <div style="display:flex;align-items:flex-start;gap:.65rem;margin-bottom:.4rem">
-        <div style="width:28px;height:28px;border-radius:4px;background:#1A3A4A;border:1px solid #3A646D;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#80B4BF;flex-shrink:0;margin-top:1px">${ri+1}</div>
-        <div style="flex:1">
-          <div style="font-size:11px;font-weight:700;color:#C8E0E5;margin-bottom:.1rem">${r.time} · ${r.module}</div>
-          <div style="font-size:10px;color:#7A9DA5">${total} svar · Hyppigst: <em style="color:#C8E0E5">${topChoice[0]}</em> (${topChoice[1]})</div>
-        </div>
-      </div>
-      <!-- Mini søjlediagram -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.3rem;margin-left:43px">
-        <div>
-          <div style="font-size:9px;color:#5DC8A0;font-weight:600;margin-bottom:2px">BEDSTE ${pctGood}%</div>
-          <div style="height:6px;background:#1A2830;border-radius:3px;overflow:hidden">
-            <div style="height:100%;width:${pctGood}%;background:#5DC8A0;border-radius:3px"></div>
-          </div>
-        </div>
-        <div>
-          <div style="font-size:9px;color:#D4B840;font-weight:600;margin-bottom:2px">NEUTRAL ${pctNeutral}%</div>
-          <div style="height:6px;background:#1A2830;border-radius:3px;overflow:hidden">
-            <div style="height:100%;width:${pctNeutral}%;background:#D4B840;border-radius:3px"></div>
-          </div>
-        </div>
-        <div>
-          <div style="font-size:9px;color:#E05555;font-weight:600;margin-bottom:2px">RISIKABELT ${pctBad}%</div>
-          <div style="height:6px;background:#1A2830;border-radius:3px;overflow:hidden">
-            <div style="height:100%;width:${pctBad}%;background:#E05555;border-radius:3px"></div>
-          </div>
-        </div>
-      </div>
-    </div>`;
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('sl').classList.contains('active')){
+    if(e.key==='ArrowRight')nextRound();
+    if(e.key==='ArrowLeft')prevRound();
+  }
+});
+
+function toggleNotes(){
+  const notes=document.getElementById('facilitator-notes');
+  const btn=document.getElementById('notes-toggle-btn');
+  const visible=notes.style.display!=='none'&&notes.style.display!=='';
+  if(visible){
+    notes.style.display='none';
+    btn.textContent='💡 Vis facilitatornotes';
+  } else {
+    notes.style.display='block';
+    btn.textContent='💡 Skjul facilitatornotes';
+  }
+}
+
+// ── DEBRIEF ───────────────────────────────────────────────────────────────
+function renderDebrief(){
+  const ans=window.allAnswers||{};
+  const all=Object.values(ans).flatMap(r=>Object.values(r||{}));
+  const tot=all.length;
+  const good=all.filter(e=>e.quality==='good').length;
+  const bad=all.filter(e=>e.quality==='bad').length;
+  const neu=all.filter(e=>e.quality==='neutral').length;
+  const pG=tot?Math.round(good/tot*100):0;
+  const pB=tot?Math.round(bad/tot*100):0;
+
+  // Mest polariserende
+  let mp={round:0,label:'',pct:0,text:''};
+  ROUND_META.forEach((r,ri)=>{
+    const re=Object.values(ans[ri]||{});
+    if(!re.length)return;
+    const p=Math.round(re.filter(e=>e.quality==='bad').length/re.length*100);
+    if(p>mp.pct)mp={round:ri+1,label:r.module,pct:p,text:r.debrief};
   });
 
-  // Aggregeret total
-  const totalAnswers = Object.values(allAnswers).reduce((sum, r) => sum + Object.keys(r||{}).length, 0);
-  const totalGood = Object.values(allAnswers).flatMap(r => Object.values(r||{})).filter(e=>e.quality==='good').length;
-  const totalBad = Object.values(allAnswers).flatMap(r => Object.values(r||{})).filter(e=>e.quality==='bad').length;
-  const pctGoodTotal = totalAnswers ? Math.round((totalGood/totalAnswers)*100) : 0;
-  const pctBadTotal = totalAnswers ? Math.round((totalBad/totalAnswers)*100) : 0;
+  const FASER=[
+    {navn:'Fase 1–2: Opdagelse, ISMS og beredskab',runder:[0,1,2,3],ref:'§ 6 · § 7',
+     sp:['Hvem ejer ledelsesansvaret fra minut ét i jeres organisation?','Har I en aktivoversigt og risikovurdering som ledelsen kender og har godkendt?','Er beredskabsplanen øvet – eller kun skrevet ned?']},
+    {navn:'Fase 3–5: Leverandør, frister og kommunikation',runder:[4,5,6],ref:'§ 6 stk. 1 nr. 4 · § 13 · § 15',
+     sp:['Kender I det svageste led i jeres forsyningskæde?','Hvem sender den tidlige varsling og kan det ske inden for 24 timer?','Er der én talsperson og én godkendt besked til kunderne?']},
+    {navn:'Fase 6–8: Governance, tilsyn og opfølgning',runder:[7,8,9,10],ref:'§ 7 · § 21 · § 23 · Art. 20',
+     sp:['Har bestyrelsen taget stilling til NIS2 og det personlige ansvar?','Hvem håndterer et opkald fra Sikkerhedsstyrelsen?','Hvad er de tre første konkrete skridt inden for 30 dage?']},
+  ];
 
-  container.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-bottom:1rem">
-      <div style="background:#1A3A2A;border:1px solid #3A6A4A;border-radius:4px;padding:.65rem;text-align:center">
-        <div style="font-size:24px;font-weight:700;color:#5DC8A0">${pctGoodTotal}%</div>
-        <div style="font-size:9px;color:#5DC8A0;font-weight:600;text-transform:uppercase">Bedste valg</div>
+  document.getElementById('debrief-content').innerHTML=`
+    <div class="dsg">
+      <div class="ds" style="background:#1A3A2A;border:1px solid #3A6A4A">
+        <div style="font-size:26px;font-weight:700;color:#5DC8A0">${pG}%</div>
+        <div style="font-size:8px;color:#5DC8A0;font-weight:700;text-transform:uppercase">Bedste valg</div>
+        <div style="font-size:9.5px;color:#7A9DA5;margin-top:.15rem">${good} af ${tot}</div>
       </div>
-      <div style="background:#1A2830;border:1px solid #3A646D;border-radius:4px;padding:.65rem;text-align:center">
-        <div style="font-size:24px;font-weight:700;color:#80B4BF">${totalAnswers}</div>
-        <div style="font-size:9px;color:#80B4BF;font-weight:600;text-transform:uppercase">Svar i alt</div>
+      <div class="ds" style="background:#3A3520;border:1px solid #8B7A30">
+        <div style="font-size:26px;font-weight:700;color:#D4B840">${neu}</div>
+        <div style="font-size:8px;color:#D4B840;font-weight:700;text-transform:uppercase">Neutrale</div>
+        <div style="font-size:9.5px;color:#7A9DA5;margin-top:.15rem">${tot?Math.round(neu/tot*100):0}% af svar</div>
       </div>
-      <div style="background:#3A1A1A;border:1px solid #8B3A3A;border-radius:4px;padding:.65rem;text-align:center">
-        <div style="font-size:24px;font-weight:700;color:#E05555">${pctBadTotal}%</div>
-        <div style="font-size:9px;color:#E05555;font-weight:600;text-transform:uppercase">Risikable valg</div>
+      <div class="ds" style="background:#3A1A1A;border:1px solid #8B3A3A">
+        <div style="font-size:26px;font-weight:700;color:#E05555">${pB}%</div>
+        <div style="font-size:8px;color:#E05555;font-weight:700;text-transform:uppercase">Kritiske</div>
+        <div style="font-size:9.5px;color:#7A9DA5;margin-top:.15rem">${bad} af ${tot}</div>
       </div>
     </div>
-    ${rows.join('')}
-  `;
+
+    ${mp.pct>0?`<div class="dh">
+      <div class="dh-l">⚡ Mest polariserende – Runde ${mp.round}: ${mp.label} (${mp.pct}% kritiske valg)</div>
+      <div class="dh-t">${mp.text}</div>
+    </div>`:''}
+
+    ${FASER.map(f=>{
+      const fe=f.runder.flatMap(ri=>Object.values(ans[ri]||{}));
+      const fp=fe.length?Math.round(fe.filter(e=>e.quality==='bad').length/fe.length*100):0;
+      return `<div class="df">
+        <div class="df-h"><div class="df-t">${f.navn}</div><div class="df-r">${f.ref} · ${fp}% kritiske valg</div></div>
+        <div class="df-b">${f.sp.map(q=>`<div class="dq"><strong style="color:#5DC8A0">→</strong> ${q}</div>`).join('')}</div>
+      </div>`;
+    }).join('')}
+
+    <div style="background:#1E3A2A;border:1px solid #3A6A4A;border-radius:4px;padding:.75rem .85rem;margin-top:.35rem">
+      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#5DC8A0;margin-bottom:.35rem">Afslutningsøvelse – individuel forpligtelse</div>
+      <div style="font-size:11.5px;color:#B8DDD5;line-height:1.6">Bed hver deltager svare på ét spørgsmål inden de forlader lokalet:<br>
+      <strong style="color:#5DC8A0">»Hvad er det ene konkrete NIS2-skridt du forpligter dig til inden for de næste 14 dage?«</strong></div>
+    </div>
+
+    <div style="background:#1A2830;border:1px solid #3A646D;border-radius:4px;padding:.75rem .85rem;margin-top:.5rem">
+      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF;margin-bottom:.45rem">Videre med Erhvervsakademi Aarhus</div>
+      ${[['NIS2 Compliance-forløb','eaaa.dk/nis','Praktisk forløb med ISMS-værktøjer og juridisk forankring'],
+         ['Sikkerhedsstyrelsen','sik.dk/erhverv/nis2-direktivet','Officiel vejledning, tilsyn og lovtekst'],
+         ['SikkerDigital.dk','sikkerdigital.dk/nis2','Praktiske tjeklister og ISMS-guide til virksomheder'],
+         ['Datatilsynet','datatilsynet.dk','GDPR-vejledning og anmeldelse af brud'],
+        ].map(([n,u,d])=>`
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:.3rem 0;border-bottom:1px solid rgba(128,180,191,.08);font-size:10.5px">
+          <div><span style="font-weight:600;color:#C8E0E5">${n}</span> <span style="color:#7A9DA5">${d}</span></div>
+          <span style="color:#80B4BF;font-weight:600;white-space:nowrap;margin-left:.5rem">${u}</span>
+        </div>`).join('')}
+    </div>`;
 }
 
+// ── OVERSIGT ──────────────────────────────────────────────────────────────
+function renderOverview(){
+  const ans=window.allAnswers||{};
+  document.getElementById('overview-content').innerHTML=ROUND_META.map((r,ri)=>{
+    const entries=Object.values(ans[ri]||{});
+    const tot=entries.length;
+    if(!tot)return`<div style="display:flex;align-items:center;gap:.55rem;padding:.45rem 0;border-bottom:1px solid rgba(128,180,191,.08);font-size:10.5px;color:#7A9DA5">
+      <div style="width:22px;height:22px;border-radius:3px;background:#1A2830;border:1px solid #3A646D;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#3A646D;flex-shrink:0">${ri+1}</div>
+      <div style="flex:1">${r.time} · ${r.module}</div><div style="font-style:italic">Ingen svar</div></div>`;
+    const c={good:0,bad:0,neutral:0};entries.forEach(e=>c[e.quality]=(c[e.quality]||0)+1);
+    const tc={};entries.forEach(e=>{const k=e.shortText||'–';tc[k]=(tc[k]||0)+1;});
+    const top=Object.entries(tc).sort((a,b)=>b[1]-a[1])[0];
+    const pG=Math.round(c.good/tot*100),pN=Math.round(c.neutral/tot*100),pB=Math.round(c.bad/tot*100);
+    return`<div style="padding:.55rem 0;border-bottom:1px solid rgba(128,180,191,.08)">
+      <div style="display:flex;gap:.55rem;align-items:flex-start;margin-bottom:.3rem">
+        <div style="width:22px;height:22px;border-radius:3px;background:#1A3A4A;border:1px solid #3A646D;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#80B4BF;flex-shrink:0">${ri+1}</div>
+        <div style="flex:1">
+          <div style="font-size:10.5px;font-weight:600;color:#C8E0E5">${r.time} · ${r.module}</div>
+          <div style="font-size:9.5px;color:#7A9DA5">${tot} svar · Hyppigst: <em style="color:#C8E0E5">${top[0]}</em> (${top[1]})</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.25rem;margin-left:30px">
+        ${[['Bedste','#5DC8A0',pG],['Neutral','#D4B840',pN],['Kritisk','#E05555',pB]].map(([l,c,p])=>`
+        <div><div style="font-size:7.5px;color:${c};font-weight:600;margin-bottom:2px">${l} ${p}%</div>
+        <div style="height:4px;background:#1A2830;border-radius:2px;overflow:hidden"><div style="height:100%;width:${p}%;background:${c};border-radius:2px"></div></div></div>`).join('')}
+      </div></div>`;
+  }).join('');
+}
 </script>
 </body>
 </html>
