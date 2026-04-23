@@ -281,6 +281,7 @@ body{font-family:'Montserrat',sans-serif;background:#1A2830;color:#E8F4F6;min-he
       </div>
       <div class="ctrl-row">
         <button class="ctrl-btn danger" onclick="resetSession()">↺ Nulstil session</button>
+      <button class="ctrl-btn primary" onclick="showOverview()" style="margin-top:.3rem;background:#1E3A2A;border:1px solid #3A6A4A;color:#5DC8A0">⊞ Samlet oversigt</button>
       </div>
     </div>
 
@@ -299,6 +300,16 @@ body{font-family:'Montserrat',sans-serif;background:#1A2830;color:#E8F4F6;min-he
     </div>
 
     <!-- Søjlediagram -->
+    <!-- Samlet oversigt panel (skjult som standard) -->
+    <div id="overview-panel" style="display:none;background:#243540;border:1px solid #3A646D;border-radius:6px;padding:1rem 1.25rem;flex:1;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#80B4BF">Samlet oversigt – alle runder</div>
+        <button onclick="hideOverview()" style="background:#1A2830;border:1px solid #3A646D;border-radius:4px;padding:.3rem .65rem;font-size:10px;font-weight:600;color:#80B4BF;cursor:pointer;font-family:'Montserrat',sans-serif">← Tilbage</button>
+      </div>
+      <div id="overview-content"></div>
+    </div>
+
+    <div id="chart-wrapper">
     <div class="chart-panel">
       <div class="chart-title">Svarfordeling – hvad valgte deltagerne?</div>
       <div id="bars"><div class="waiting">Afventer at deltagerne svarer på runde 1...</div></div>
@@ -475,6 +486,108 @@ document.addEventListener('keydown', e => {
   if(e.key === 'ArrowRight') window.nextRound();
   if(e.key === 'ArrowLeft') window.prevRound();
 });
+
+function showOverview() {
+  document.getElementById('overview-panel').style.display = 'block';
+  document.getElementById('chart-wrapper').style.display = 'none';
+  renderOverview();
+}
+
+function hideOverview() {
+  document.getElementById('overview-panel').style.display = 'none';
+  document.getElementById('chart-wrapper').style.display = 'block';
+}
+
+function renderOverview() {
+  const container = document.getElementById('overview-content');
+  const rows = ROUND_META.map((r, ri) => {
+    const roundAnswers = allAnswers[ri] || {};
+    const entries = Object.values(roundAnswers);
+    const total = entries.length;
+
+    if (!total) {
+      return `<div style="display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-bottom:1px solid rgba(128,180,191,.15)">
+        <div style="width:28px;height:28px;border-radius:4px;background:#1A2830;border:1px solid #3A646D;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#3A646D;flex-shrink:0">${ri+1}</div>
+        <div style="flex:1">
+          <div style="font-size:11px;font-weight:600;color:#7A9DA5">${r.time} · ${r.module}</div>
+        </div>
+        <div style="font-size:11px;color:#3A646D;font-style:italic">Ingen svar endnu</div>
+      </div>`;
+    }
+
+    const counts = {good:0, bad:0, neutral:0};
+    entries.forEach(e => counts[e.quality] = (counts[e.quality]||0)+1);
+    const dominant = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+    const pctGood = Math.round((counts.good/total)*100);
+    const pctBad = Math.round((counts.bad/total)*100);
+    const pctNeutral = Math.round((counts.neutral/total)*100);
+
+    // Find mest valgte shortText
+    const textCounts = {};
+    entries.forEach(e => {
+      const k = e.shortText || '–';
+      textCounts[k] = (textCounts[k]||0)+1;
+    });
+    const topChoice = Object.entries(textCounts).sort((a,b)=>b[1]-a[1])[0];
+
+    return `<div style="padding:.65rem 0;border-bottom:1px solid rgba(128,180,191,.12)">
+      <div style="display:flex;align-items:flex-start;gap:.65rem;margin-bottom:.4rem">
+        <div style="width:28px;height:28px;border-radius:4px;background:#1A3A4A;border:1px solid #3A646D;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#80B4BF;flex-shrink:0;margin-top:1px">${ri+1}</div>
+        <div style="flex:1">
+          <div style="font-size:11px;font-weight:700;color:#C8E0E5;margin-bottom:.1rem">${r.time} · ${r.module}</div>
+          <div style="font-size:10px;color:#7A9DA5">${total} svar · Hyppigst: <em style="color:#C8E0E5">${topChoice[0]}</em> (${topChoice[1]})</div>
+        </div>
+      </div>
+      <!-- Mini søjlediagram -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.3rem;margin-left:43px">
+        <div>
+          <div style="font-size:9px;color:#5DC8A0;font-weight:600;margin-bottom:2px">BEDSTE ${pctGood}%</div>
+          <div style="height:6px;background:#1A2830;border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pctGood}%;background:#5DC8A0;border-radius:3px"></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:#D4B840;font-weight:600;margin-bottom:2px">NEUTRAL ${pctNeutral}%</div>
+          <div style="height:6px;background:#1A2830;border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pctNeutral}%;background:#D4B840;border-radius:3px"></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:#E05555;font-weight:600;margin-bottom:2px">RISIKABELT ${pctBad}%</div>
+          <div style="height:6px;background:#1A2830;border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pctBad}%;background:#E05555;border-radius:3px"></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  // Aggregeret total
+  const totalAnswers = Object.values(allAnswers).reduce((sum, r) => sum + Object.keys(r||{}).length, 0);
+  const totalGood = Object.values(allAnswers).flatMap(r => Object.values(r||{})).filter(e=>e.quality==='good').length;
+  const totalBad = Object.values(allAnswers).flatMap(r => Object.values(r||{})).filter(e=>e.quality==='bad').length;
+  const pctGoodTotal = totalAnswers ? Math.round((totalGood/totalAnswers)*100) : 0;
+  const pctBadTotal = totalAnswers ? Math.round((totalBad/totalAnswers)*100) : 0;
+
+  container.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-bottom:1rem">
+      <div style="background:#1A3A2A;border:1px solid #3A6A4A;border-radius:4px;padding:.65rem;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:#5DC8A0">${pctGoodTotal}%</div>
+        <div style="font-size:9px;color:#5DC8A0;font-weight:600;text-transform:uppercase">Bedste valg</div>
+      </div>
+      <div style="background:#1A2830;border:1px solid #3A646D;border-radius:4px;padding:.65rem;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:#80B4BF">${totalAnswers}</div>
+        <div style="font-size:9px;color:#80B4BF;font-weight:600;text-transform:uppercase">Svar i alt</div>
+      </div>
+      <div style="background:#3A1A1A;border:1px solid #8B3A3A;border-radius:4px;padding:.65rem;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:#E05555">${pctBadTotal}%</div>
+        <div style="font-size:9px;color:#E05555;font-weight:600;text-transform:uppercase">Risikable valg</div>
+      </div>
+    </div>
+    ${rows.join('')}
+  `;
+}
+
 </script>
 </body>
 </html>

@@ -162,60 +162,6 @@ h1{font-size:24px;font-weight:700;line-height:1.2;margin-bottom:.4rem;color:#2C3
   .ind.econ .ind-val{font-size:10px}
 }
 </style>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-  import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-database.js";
-
-  // ── INDSÆT DIN FIREBASE-KONFIGURATION HER ──
-  const firebaseConfig = {
-    apiKey: "AIzaSyCf61thmI8AyQUkRldS2FmmZZFpa6yAXDc",
-    authDomain: "nis2-simulation.firebaseapp.com",
-    databaseURL: "https://nis2-simulation-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "nis2-simulation",
-    storageBucket: "nis2-simulation.firebasestorage.app",
-    messagingSenderId: "570342903290",
-    appId: "1:570342903290:web:cbeb11ba80c8e941ece843"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-
-  // Generer anonym deltager-ID
-  const SESSION_ID = sessionStorage.getItem('nis2_session') || 
-    'deltager_' + Math.random().toString(36).substr(2,6);
-  sessionStorage.setItem('nis2_session', SESSION_ID);
-
-  // Lyt på facilitatorens aktive runde
-  let facilitatorRound = -1;
-  onValue(ref(db, 'session/activeRound'), snap => {
-    const r = snap.val();
-    if(r !== null && r !== facilitatorRound) {
-      facilitatorRound = r;
-      // Lås til facilitatorens runde hvis deltager er bagud
-      if(window.ST && window.ST.screen === 'round' && window.ST.round < r) {
-        window.ST.round = r;
-        window.render();
-      }
-    }
-  });
-
-  // Lyt på facilitatorens reset-signal
-  onValue(ref(db, 'session/resetSignal'), snap => {
-    const v = snap.val();
-    if(v && window.restart) window.restart();
-  });
-
-  // Eksponér send-funktion til global scope
-  window.sendAnswerToFirebase = function(roundIdx, choiceIdx, quality, shortText) {
-    const answerRef = ref(db, `answers/${roundIdx}/${SESSION_ID}`);
-    set(answerRef, {
-      choice: choiceIdx,
-      quality: quality,
-      shortText: shortText,
-      ts: Date.now()
-    });
-  };
-</script>
 </head>
 <body>
 
@@ -228,9 +174,11 @@ h1{font-size:24px;font-weight:700;line-height:1.2;margin-bottom:.4rem;color:#2C3
       onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
     <span style="display:none;font-size:13px;font-weight:700;color:#3A646D;text-transform:uppercase;letter-spacing:.01em">ERHVERVSAKADEMI AARHUS</span>
     <span class="topbar-divider">NIS2 Compliance</span>
-    <span style="font-size:10px;color:#808B94;margin-left:.5rem" id="session-indicator">● Forbinder...</span>
   </div>
-  <a href="https://eaaa.dk/nis" target="_blank" class="topbar-link">eaaa.dk/nis →</a>
+  <div style="display:flex;align-items:center;gap:.75rem">
+    <span id="sid-indicator" style="font-size:10px;color:#808B94;font-weight:600"></span>
+    <a href="https://eaaa.dk/nis" target="_blank" class="topbar-link">eaaa.dk/nis →</a>
+  </div>
 </div>
 
 <div class="outer" id="app"></div>
@@ -414,16 +362,13 @@ let ST = {
 };
 
 // ─── RENDER ──────────────────────────────────────────────────────────────
-// Eksponér til Firebase-modul
-window.ST = ST;
-window.render = render;
-window.restart = restart;
-
 function render(){
   const app=document.getElementById('app');
   if(ST.screen==='start')app.innerHTML=renderStart();
   else if(ST.screen==='round')app.innerHTML=renderRound();
+  else if(ST.screen==='summary')app.innerHTML=renderSummary();
   else app.innerHTML=renderReport();
+  window.scrollTo(0,0);
 }
 
 function indGrid(){
@@ -630,6 +575,82 @@ function renderReport(){
   </div>`;
 }
 
+
+function renderSummary(){
+  const r=ROUNDS[ST.round];
+  const c=ST.chosen.find(x=>x.round===ST.round);
+  if(!c)return'';
+  const choice=r.choices[c.idx];
+  const isNext=ST.round+1<TOTAL;
+  const nextR=isNext?ROUNDS[ST.round+1]:null;
+
+  const qualityLabel=choice.quality==='good'?'Bedste valg':choice.quality==='bad'?'Risikabelt valg':'Neutralt valg';
+  const qualityIcon=choice.quality==='good'?'✓':choice.quality==='bad'?'⚠':'→';
+
+  // Indikatorer der ændrede sig i denne runde
+  const changes=[];
+  if(choice.d!==0)changes.push({l:'Drift',v:choice.d});
+  if(choice.c!==0)changes.push({l:'Compliance',v:choice.c});
+  if(choice.o!==0)changes.push({l:'Omdømme',v:choice.o});
+  if(choice.l!==0)changes.push({l:'Ledelse',v:choice.l});
+
+  return `
+  <div style="max-width:680px;margin:0 auto">
+    <!-- Runde-header -->
+    <div style="background:#3A646D;border-radius:4px;padding:.85rem 1.1rem;margin-bottom:.75rem;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.7);margin-bottom:.15rem">${r.title} af ${TOTAL} · ${r.time}</div>
+        <div style="font-size:15px;font-weight:700;color:white">${r.module}</div>
+      </div>
+      <div style="font-size:28px;font-weight:700;color:rgba(255,255,255,.9)">${ST.round+1}<span style="font-size:14px;opacity:.6">/${TOTAL}</span></div>
+    </div>
+
+    <!-- Dit valg -->
+    <div style="background:#fff;border:1px solid #BED4DB;border-radius:4px;padding:1rem 1.1rem;margin-bottom:.65rem">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#808B94;margin-bottom:.4rem">Dit valg</div>
+      <div style="font-size:13.5px;line-height:1.6;color:#2C3E44;margin-bottom:.65rem;padding-bottom:.65rem;border-bottom:1px solid #BED4DB">${choice.text}</div>
+
+      <!-- Konsekvens -->
+      <div style="font-size:12.5px;line-height:1.65;color:#5A6A70;margin-bottom:.5rem">${choice.consequence}</div>
+
+      <!-- Økonomi hvis relevant -->
+      ${choice.econ_impact>0?`<div style="background:#F4EBC0;border:1px solid #C8B86A;border-radius:4px;padding:.5rem .75rem;font-size:12px;color:#5A4A10;margin-top:.5rem">
+        <strong>Estimeret eksponering:</strong> ${dkk(choice.econ_impact)}
+      </div>`:''}
+
+      <!-- Juridiske flag -->
+      ${choice.legal&&choice.legal.length?`<div style="display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.5rem">
+        ${choice.legal.map(l=>`<span style="background:#FCEBEB;color:#A32D2D;border-radius:3px;padding:2px 7px;font-size:10px;font-weight:600">⚠ ${l}</span>`).join('')}
+      </div>`:''}
+    </div>
+
+    <!-- Indikatorændringer -->
+    ${changes.length?`<div style="background:#F3F4F7;border:1px solid #BED4DB;border-radius:4px;padding:.75rem 1rem;margin-bottom:.65rem">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#808B94;margin-bottom:.5rem">Effekt på indikatorer denne runde</div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        ${changes.map(ch=>`<div style="background:#fff;border:1px solid ${ch.v>0?'#80B4BF':'#F09595'};border-radius:4px;padding:.4rem .75rem;text-align:center">
+          <div style="font-size:10px;color:#808B94;font-weight:600">${ch.l}</div>
+          <div style="font-size:18px;font-weight:700;color:${ch.v>0?'#3A646D':'#A32D2D'}">${ch.v>0?'+':''}${ch.v}</div>
+        </div>`).join('')}
+      </div>
+    </div>`:''}
+
+    <!-- NIS2-indsigt -->
+    <div style="border-left:3px solid #80B4BF;background:#EBF4F6;border-radius:0 4px 4px 0;padding:.65rem .9rem;margin-bottom:.75rem">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#3A646D;margin-bottom:.2rem">NIS2-indsigt</div>
+      <div style="font-size:13px;line-height:1.65;color:#2C4F57">${r.insight}</div>
+    </div>
+
+    <!-- Samlede indikatorer -->
+    ${indGrid()}
+
+    <!-- Fortsæt-knap -->
+    <button class="btn-primary" onclick="continueAfterSummary()" style="margin-top:.5rem">
+      ${isNext?`Fortsæt til ${nextR.title}: ${nextR.time} →`:'Se din samlede rapport →'}
+    </button>
+  </div>`;
+}
+
 // ─── HANDLINGER ──────────────────────────────────────────────────────────
 function startSim(){ST.screen='round';render()}
 function choose(idx){
@@ -640,15 +661,18 @@ function choose(idx){
   if(c.legal)ST.legalFlags.push(...c.legal);
   if(c.markers)c.markers.forEach(m=>ST.markers[m]=true);
   ST.chosen.push({round:ST.round,idx});
-  // Send svar til Firebase
-  if(window.sendAnswerToFirebase){
-    window.sendAnswerToFirebase(ST.round, idx, c.quality, c.shortText||'');
-  }
+  // Send til Firebase
+  if(window.fbSend) window.fbSend(ST.round, c.quality, c.shortText||c.text.substring(0,60));
   render();
 }
 function nextRound(){
   if(ST.round+1>=TOTAL){ST.screen='report';render();return}
-  ST.round++;render();
+  ST.screen='summary';render();
+}
+function continueAfterSummary(){
+  ST.round++;
+  ST.screen='round';
+  render();
 }
 function restart(){
   ROUNDS=shuffleRounds(RAW_ROUNDS);
@@ -800,14 +824,49 @@ function genPDF(){
 // ─── START ───────────────────────────────────────────────────────────────
 render();
 </script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-database.js";
 
-<script>
-// Opdater session-indikator når Firebase er klar
+const firebaseConfig = {
+  apiKey: "AIzaSyCf61thmI8AyQUkRldS2FmmZZFpa6yAXDc",
+  authDomain: "nis2-simulation.firebaseapp.com",
+  databaseURL: "https://nis2-simulation-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "nis2-simulation",
+  storageBucket: "nis2-simulation.firebasestorage.app",
+  messagingSenderId: "570342903290",
+  appId: "1:570342903290:web:cbeb11ba80c8e941ece843"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Anonym session-ID
+const SID = sessionStorage.getItem('nis2_sid') || 'dx' + Math.random().toString(36).substr(2,5);
+sessionStorage.setItem('nis2_sid', SID);
+
+// Vis session-ID i topbar
 setTimeout(() => {
-  const sid = sessionStorage.getItem('nis2_session');
-  const el = document.getElementById('session-indicator');
-  if(el && sid) el.textContent = '● Tilsluttet (' + sid.split('_')[1] + ')';
-}, 1500);
+  const el = document.getElementById('sid-indicator');
+  if(el) el.textContent = '● ' + SID;
+}, 500);
+
+// Send svar til Firebase - kaldes fra choose()
+window.fbSend = function(roundIdx, quality, shortText) {
+  set(ref(db, 'answers/' + roundIdx + '/' + SID), {
+    quality, shortText, ts: Date.now()
+  }).catch(e => console.warn('Firebase send fejl:', e));
+};
+
+// Lyt kun på reset-signal fra facilitator
+onValue(ref(db, 'session/resetSignal'), snap => {
+  const v = snap.val();
+  if(v && window._lastReset && v > window._lastReset) {
+    window._lastReset = v;
+    if(typeof restart === 'function') restart();
+  }
+  if(v && !window._lastReset) window._lastReset = v;
+});
 </script>
 </body>
 </html>
