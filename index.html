@@ -255,6 +255,7 @@ h1{font-size:24px;font-weight:700;line-height:1.2;margin-bottom:.4rem;color:#2C3
     <span class="topbar-divider">NIS2 Compliance</span>
   </div>
   <div style="display:flex;align-items:center;gap:.75rem">
+    <span id="version-indicator" style="font-size:10px;color:#808B94;font-weight:600">Version v0.3.5 · 2026-04-24 10:08</span>
     <span id="sid-indicator" style="font-size:10px;color:#808B94;font-weight:600"></span>
     <a href="https://eaaa.dk/nis" target="_blank" class="topbar-link">eaaa.dk/nis →</a>
   </div>
@@ -1049,7 +1050,7 @@ async function genPDF(){
   y+=28;
 
   // Indikatorer
-  const iLabels=['Drift','Compliance','Omdoemme','Ledelse','Oek. risiko'];
+  const iLabels=['Drift','Compliance','Omdømme','Ledelse','Øk. risiko'];
   const iVals=[ST.drift,ST.compliance,ST.omdoemme,ST.ledelse,null];
   const iw=(CW-4*3)/5;
   iLabels.forEach((lbl,i)=>{
@@ -1260,7 +1261,7 @@ async function genPDF(){
   fr(M,y,CW,28,C.jade,4);fr(M,y,CW,2,C.teal);
   sf('bold',11);sc(C.white);doc.text('NIS2 Compliance-forløb – eaaa.dk/nis',M+6,y+9);
   sf('normal',8);doc.setTextColor(255,255,255);
-  const ctaL=doc.splitTextToSize('Forlobet giver ledelser et faelles sprog, konkrete ISMS-vaerktojer og forstaelse for det personlige ansvar, NIS2 medfoerer.',CW-12);
+  const ctaL=doc.splitTextToSize('Forløbet giver ledelser et fælles sprog, konkrete ISMS-værktøjer og forståelse for det personlige ansvar, NIS2 medfører.',CW-12);
   doc.text(ctaL,M+6,y+16);
 
   // Opdater alle footers med korrekt sidetal
@@ -1268,7 +1269,7 @@ async function genPDF(){
   // Ret footer side 1 og 2 – de er allerede skrevet med korrekt tal
   footer('Side '+pageNum+' af '+totalPages);
 
-  // Aaben i ny fane
+  // Åben i ny fane
   try {
     const url=doc.output('bloburl');
     window.open(url,'_blank');
@@ -1297,6 +1298,10 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+
+const APP_VERSION = "v0.3.5";
+const APP_UPDATED_AT = "2026-04-24 10:08";
+let activeSessionId = null;
 
 // Anonym session-ID
 const SID = sessionStorage.getItem('nis2_sid') || 'dx' + Math.random().toString(36).substr(2,5);
@@ -1328,9 +1333,16 @@ window.fbSend = function(roundIdx, choice, state) {
       econTotal: state.econTotal || 0,
       score
     },
+    sessionId: activeSessionId || 'legacy',
+    appVersion: APP_VERSION,
     ts: Date.now()
   }).catch(e => console.warn('Firebase send fejl:', e));
 };
+
+// Lyt på aktiv session-id. Nye svar mærkes med dette id, så gamle resultater ikke følger med i scorecard.
+onValue(ref(db, 'session/id'), snap => {
+  activeSessionId = snap.val() || null;
+});
 
 // Lyt på session/state – vis ventesskærm indtil facilitator starter
 onValue(ref(db, 'session/state'), snap => {

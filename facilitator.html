@@ -20,12 +20,76 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+
+const APP_VERSION = "v0.3.5";
+const APP_UPDATED_AT = "2026-04-24 10:08";
 let currentRound = 0;
+let currentSessionId = null;
+window.activePanel = 'chart';
+window.rawAnswers = {};
 window.allAnswers = {};
 
-onValue(ref(db,'answers'), snap => {
-  window.allAnswers = snap.val() || {};
+function filterAnswersForCurrentSession(raw) {
+  if(!currentSessionId) return {};
+  const filtered = {};
+  Object.entries(raw || {}).forEach(([round, answers]) => {
+    const kept = {};
+    Object.entries(answers || {}).forEach(([id, answer]) => {
+      if(answer && answer.sessionId === currentSessionId) kept[id] = answer;
+    });
+    filtered[round] = kept;
+  });
+  return filtered;
+}
+
+function refreshFilteredAnswers() {
+  window.allAnswers = filterAnswersForCurrentSession(window.rawAnswers || {});
   updateDisplay();
+}
+
+onValue(ref(db,'session/id'), snap => {
+  currentSessionId = snap.val() || null;
+  refreshFilteredAnswers();
+});
+
+function updateContextHeader(panel='chart') {
+  const title = document.getElementById('current-round-label');
+  const law = document.getElementById('round-law');
+  const module = document.getElementById('round-module');
+  if(!title || !law || !module) return;
+  if(panel === 'scorecard') {
+    title.textContent = 'Scorecard · samlet status';
+    law.textContent = 'Alle runder';
+    module.textContent = 'Samlet score på tværs af alle besvarede runder. Tabellen viser hver gruppe i forhold til gennemsnittet.';
+    return;
+  }
+  if(panel === 'overview') {
+    title.textContent = 'Samlet oversigt - runde 1-11';
+    law.textContent = 'Forloeb';
+    module.textContent = 'Overblik over hele simulationens runder, faser og laeringspunkter.';
+    return;
+  }
+  if(panel === 'debrief') {
+    title.textContent = 'Debriefing · læringsopsamling';
+    law.textContent = 'Efterspil';
+    module.textContent = 'Fælles refleksion over beslutningsmønstre, governance og NIS2-modenhed.';
+    return;
+  }
+  if(panel === 'notes') {
+    title.textContent = `Facilitatornoter - runde ${currentRound+1} af 11`;
+    law.textContent = ROUND_META[currentRound].lawRef;
+    module.textContent = ROUND_META[currentRound].module;
+    return;
+  }
+  title.textContent = `Runde ${currentRound+1} af 11 · ${ROUND_META[currentRound].time}`;
+  law.textContent = ROUND_META[currentRound].lawRef;
+  module.textContent = ROUND_META[currentRound].module;
+}
+
+
+onValue(ref(db,'answers'), snap => {
+  window.rawAnswers = snap.val() || {};
+  refreshFilteredAnswers();
 });
 
 function updateDisplay() {
@@ -38,9 +102,7 @@ function updateDisplay() {
   const exp = window.expectedParticipants || 1;
   const pct = Math.min(100,Math.round((total/exp)*100));
   el('progress-text').textContent = total>0 ? `${total} af ${exp} (${pct}%)` : 'Afventer svar...';
-  el('current-round-label').textContent = `Runde ${currentRound+1} af 11 · ${ROUND_META[currentRound].time}`;
-  el('round-module').textContent = ROUND_META[currentRound].module;
-  el('round-law').textContent = ROUND_META[currentRound].lawRef;
+  updateContextHeader(window.activePanel || 'chart');
   const counts={good:0,bad:0,neutral:0};
   const choiceCounts={};
   entries.forEach(e=>{
@@ -92,11 +154,15 @@ window.setRound=function(r){
   document.querySelectorAll('.rbtn').forEach((b,i)=>b.classList.toggle('active',i===r));
   showPanel('chart');
 };
-window.startSession=function(){
-  remove(ref(db,'answers'));
-  set(ref(db,'session/resetSignal'),Date.now());
-  set(ref(db,'session/activeRound'),0);
-  set(ref(db,'session/state'),'active');
+window.startSession=async function(){
+  const newSessionId = 'session-' + Date.now();
+  await remove(ref(db,'answers')).catch(e=>console.warn('Kunne ikke rydde gamle svar:', e));
+  await set(ref(db,'session/resetSignal'),Date.now());
+  await set(ref(db,'session/activeRound'),0);
+  await set(ref(db,'session/id'),newSessionId);
+  await set(ref(db,'session/state'),'active');
+  currentSessionId=newSessionId;
+  window.rawAnswers={};
   window.allAnswers={};
   currentRound=0;
   window.expectedParticipants=parseInt(document.getElementById('expected-input').value)||15;
@@ -106,18 +172,29 @@ window.startSession=function(){
     document.querySelectorAll('.rbtn').forEach((b,i)=>b.classList.toggle('active',i===0));
     updateNotes(0);
     updateDisplay();
+    renderScorecard();
   },100);
 };
-window.resetSession=function(){
-  if(!confirm('Nulstil alle svar og gå til intro?')) return;
+window.resetSession=async function(){
+  if(!confirm('Nulstil alle svar, scorecard og gå til intro?')) return;
   clearInterval(timerInterval);timerStart=null;
   const td=document.getElementById('timer-display');
   if(td){td.textContent='00:00';td.style.color='#5DC8A0';}
-  remove(ref(db,'answers'));
-  set(ref(db,'session/resetSignal'),Date.now());
-  set(ref(db,'session/activeRound'),0);
-  set(ref(db,'session/state'),'waiting');
+  await remove(ref(db,'answers')).catch(e=>console.warn('Kunne ikke rydde gamle svar:', e));
+  await set(ref(db,'session/resetSignal'),Date.now());
+  await set(ref(db,'session/activeRound'),0);
+  await set(ref(db,'session/id'),null);
+  await set(ref(db,'session/state'),'waiting');
+  currentSessionId=null;
+  currentRound=0;
+  window.rawAnswers={};
   window.allAnswers={};
+  document.querySelectorAll('.rbtn').forEach((b,i)=>{b.classList.toggle('active',i===0);b.classList.remove('answered');});
+  const scoreEl=document.getElementById('scorecard-content');
+  if(scoreEl) scoreEl.innerHTML='<div class="waiting">Scorecard er nulstillet. Start en ny session for at indsamle nye svar.</div>';
+  const bars=document.getElementById('bars');
+  if(bars) bars.innerHTML='<div class="waiting">Afventer svar...</div>';
+  updateDisplay();
   showScreen('intro');
 };
 window.setExpected=function(n){window.expectedParticipants=parseInt(n)||1;updateDisplay();};
@@ -488,7 +565,10 @@ body{background:#F3F4F7;color:#2C3E44}
       <span class="timer-lbl">Tid</span>
       <span id="timer-display">00:00</span>
     </div>
-    <span style="font-size:10px;background:rgba(0,0,0,.2);padding:.28rem .6rem;border-radius:3px;color:rgba(255,255,255,.6)" class="live-badge">
+    <span id="version-indicator" style="font-size:10px;background:#F3F4F7;border:1px solid #BED4DB;padding:.28rem .6rem;border-radius:3px;color:#5A6A70" class="live-badge">
+      Version v0.3.5 · 2026-04-24 10:08
+    </span>
+    <span style="font-size:10px;background:#EBF4F6;border:1px solid #BED4DB;padding:.28rem .6rem;border-radius:3px;color:#3A646D" class="live-badge">
       <span class="pulse"></span> Live · DataBridge Solutions A/S
     </span>
   </div>
@@ -820,23 +900,30 @@ function toggleNotes(){
   }
 }
 
-// ── SCORECARD ────────────────────────────────────────────────────────────
+// -- SCORECARD ------------------------------------------------------------
 function dkk(n){return new Intl.NumberFormat('da-DK',{style:'currency',currency:'DKK',maximumFractionDigits:0}).format(n||0)}
-function calcFacilitatorScore(st){
-  const raw=(st.drift*15 + st.compliance*35 + st.omdoemme*20 + st.ledelse*30);
-  return Math.round(Math.max(0,Math.min(100,50 + raw/4)));
+function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
+function maturityFromQuality(st){
+  const answered = st.answered || 0;
+  if(!answered) return 0;
+  const decisionScore = ((st.good*100) + (st.neutral*55) + (st.bad*15)) / answered;
+  const econPenalty = Math.min(15, (st.econTotal || 0) / 1500000 * 15);
+  return Math.round(clamp(decisionScore - econPenalty, 0, 100));
 }
 function buildScoreRows(){
   const ids=new Set();
   Object.values(window.allAnswers||{}).forEach(r=>Object.keys(r||{}).forEach(id=>ids.add(id)));
   return [...ids].map(id=>{
-    const st={id,drift:0,compliance:0,omdoemme:0,ledelse:0,econTotal:0,answered:0,lastTs:0};
+    const st={id,drift:0,compliance:0,omdoemme:0,ledelse:0,econTotal:0,answered:0,good:0,neutral:0,bad:0,lastTs:0};
     let latest=null;
     for(let i=0;i<11;i++){
       const a=(window.allAnswers[i]||{})[id];
       if(!a) continue;
       st.answered++;
       st.lastTs=Math.max(st.lastTs,a.ts||0);
+      if(a.quality==='good') st.good++;
+      else if(a.quality==='bad') st.bad++;
+      else st.neutral++;
       if(a.cumulative){ latest=a.cumulative; }
       else {
         st.drift += a.drift||0;
@@ -847,26 +934,43 @@ function buildScoreRows(){
       }
     }
     if(latest){
-      st.drift=latest.drift||0;st.compliance=latest.compliance||0;st.omdoemme=latest.omdoemme||0;st.ledelse=latest.ledelse||0;st.econTotal=latest.econTotal||0;st.score=latest.score ?? calcFacilitatorScore(st);
-    } else st.score=calcFacilitatorScore(st);
+      st.drift=latest.drift||0;
+      st.compliance=latest.compliance||0;
+      st.omdoemme=latest.omdoemme||0;
+      st.ledelse=latest.ledelse||0;
+      st.econTotal=latest.econTotal||0;
+    }
+    st.score=maturityFromQuality(st);
     return st;
-  }).sort((a,b)=>b.score-a.score || a.econTotal-b.econTotal);
+  }).sort((a,b)=>b.score-a.score || a.econTotal-b.econTotal || a.id.localeCompare(b.id));
+}
+function scoreStatus(score,avg){
+  if(score > avg) return 'Over snit';
+  if(score < avg) return 'Under snit';
+  return 'På snit';
 }
 function renderScorecard(){
   const el=document.getElementById('scorecard-content'); if(!el) return;
   const rows=buildScoreRows();
-  if(!rows.length){el.innerHTML='<div class="waiting">Scorecard vises, når grupperne har svaret.</div>';return;}
+  if(!rows.length){el.innerHTML='<div class="waiting">Scorecard vises, naar grupperne har svaret. Det samler alle besvarelser paa tvaers af runde 1-11.</div>';return;}
   const avg=Math.round(rows.reduce((s,r)=>s+r.score,0)/rows.length);
   const avgEcon=Math.round(rows.reduce((s,r)=>s+r.econTotal,0)/rows.length);
+  const avgAnswered=(rows.reduce((s,r)=>s+r.answered,0)/rows.length).toFixed(1).replace('.',',');
   el.innerHTML=`
     <div class="score-summary">
-      <div><span>Gennemsnitlig modenhedsscore</span><strong>${avg}/100</strong></div>
-      <div><span>Gennemsnitlig økonomisk konsekvens</span><strong>${dkk(avgEcon)}</strong></div>
-      <div><span>Antal grupper</span><strong>${rows.length}</strong></div>
+      <div><span>Gns. modenhedsscore, alle besvarede runder</span><strong>${avg}/100</strong></div>
+      <div><span>Gns. økonomisk konsekvens pr. gruppe</span><strong>${dkk(avgEcon)}</strong></div>
+      <div><span>Grupper og gns. runder</span><strong>${rows.length} · ${avgAnswered}/11</strong></div>
+    </div>
+    <div style="font-size:12px;color:#5A6A70;line-height:1.5;margin:-.25rem 0 .7rem">
+      Scorecardet er samlet for alle besvarelser paa tvaers af hele simulationen. Modenhedsscoren beregnes primaert ud fra beslutningskvalitet: stærke valg vægter højt, neutrale valg middel og svage valg lavt. Økonomisk konsekvens trækker moderat ned.
     </div>
     <div class="score-table-wrap"><table class="score-table">
-      <thead><tr><th>Gruppe</th><th>Runder</th><th>Drift</th><th>Compliance</th><th>Omdømme</th><th>Ledelse</th><th>Økonomi</th><th>Score</th><th>Status</th></tr></thead>
-      <tbody>${rows.map(r=>`<tr class="${r.score>=avg?'above':'below'}"><td>${r.id}</td><td>${r.answered}/11</td><td>${r.drift}</td><td>${r.compliance}</td><td>${r.omdoemme}</td><td>${r.ledelse}</td><td>${dkk(r.econTotal)}</td><td><strong>${r.score}</strong></td><td>${r.score>=avg?'Over snit':'Under snit'}</td></tr>`).join('')}</tbody>
+      <thead><tr><th>Gruppe</th><th>Runder</th><th>Staerk</th><th>Neutral</th><th>Svag</th><th>Drift</th><th>Compliance</th><th>Omdoemme</th><th>Ledelse</th><th>Oekonomi</th><th>Score</th><th>Status</th></tr></thead>
+      <tbody>${rows.map(r=>{
+        const status=scoreStatus(r.score,avg);
+        return `<tr class="${r.score>avg?'above':r.score<avg?'below':''}"><td>${r.id}</td><td>${r.answered}/11</td><td>${r.good}</td><td>${r.neutral}</td><td>${r.bad}</td><td>${r.drift}</td><td>${r.compliance}</td><td>${r.omdoemme}</td><td>${r.ledelse}</td><td>${dkk(r.econTotal)}</td><td><strong>${r.score}</strong></td><td>${status}</td></tr>`;
+      }).join('')}</tbody>
     </table></div>`;
 }
 
@@ -876,12 +980,14 @@ let debriefStep = 1; // 1=spejling, 2=fordybning, 3=forpligtelse
 let debriefFaseIdx = 0; // hvilken fase vi er på i trin 2
 
 function showPanel(n){
+  window.activePanel = n;
   ['chart','scorecard','notes','debrief','overview'].forEach(p=>{
     const el=document.getElementById('panel-'+p);
     if(!el) return;
     el.style.display=p===n?(p==='chart'?'flex':'flex'):'none';
     if(p===n&&p!=='chart') el.style.flexDirection='column';
   });
+  updateContextHeader(n);
   if(n==='scorecard') renderScorecard();
   if(n==='notes') updateNotes(currentRound);
   if(n==='debrief'){debriefStep=1;debriefFaseIdx=0;renderDebrief();}
