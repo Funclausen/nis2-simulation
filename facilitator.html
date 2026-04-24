@@ -63,7 +63,8 @@ function updateDisplay() {
   }).join('');
   if(document.getElementById('debrief-content').parentElement.style.display!=='none') renderDebrief();
   if(document.getElementById('overview-content').parentElement.style.display!=='none') renderOverview();
-  document.querySelectorAll('.round-btn').forEach((btn,i)=>{
+  if(document.getElementById('scorecard-content') && document.getElementById('scorecard-content').parentElement.style.display!=='none') renderScorecard();
+  document.querySelectorAll('.rbtn').forEach((btn,i)=>{
     const rndAnswers=Object.keys(window.allAnswers[i]||{}).length;
     btn.classList.toggle('answered', rndAnswers>0);
   });
@@ -88,7 +89,7 @@ window.setRound=function(r){
   set(ref(db,'session/activeRound'),r);
   updateDisplay();
   updateNotes(r);
-  document.querySelectorAll('.round-btn').forEach((b,i)=>b.classList.toggle('active',i===r));
+  document.querySelectorAll('.rbtn').forEach((b,i)=>b.classList.toggle('active',i===r));
   showPanel('chart');
 };
 window.startSession=function(){
@@ -102,7 +103,7 @@ window.startSession=function(){
   window.startTimer();
   showScreen('live');
   setTimeout(()=>{
-    document.querySelectorAll('.round-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+    document.querySelectorAll('.rbtn').forEach((b,i)=>b.classList.toggle('active',i===0));
     updateNotes(0);
     updateDisplay();
   },100);
@@ -460,6 +461,18 @@ body{font-family:'Montserrat',sans-serif;background:#1A2830;color:#E8F4F6;
               font-size:10px;font-weight:700;cursor:pointer;
               font-family:'Montserrat',sans-serif;text-align:center;
               margin-top:.3rem;touch-action:manipulation}
+/* ── EAAA LIGHT THEME OVERRIDE ─────────────────────────────────────────── */
+body{background:#F3F4F7;color:#2C3E44}
+.topbar{background:#fff;color:#2C3E44;border-bottom:3px solid #80B4BF;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.tb-logo{filter:none;opacity:1}.tb-title{color:#3A646D;border-left:1px solid #BED4DB}.timer-box{background:#EBF4F6}.timer-lbl{color:#808B94}.live-badge{background:#EBF4F6!important;color:#3A646D!important}
+.sb{background:#fff;border-right:1px solid #BED4DB}.ct{background:#F3F4F7}.panel,.ri,.chart-p,.fp{background:#fff;border-color:#BED4DB;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.panel-t,.chart-t,.fp-t,.ri-n{color:#3A646D}.ri-m,.bar-label,.dq,.dh-t{color:#2C3E44}.ri-law,.df-h{background:#EBF4F6;color:#3A646D;border-color:#80B4BF}.bar-track,.dh,.df-b{background:#F3F4F7;border-color:#BED4DB}.bar-fill{background:linear-gradient(90deg,#3A646D,#80B4BF)}
+.cbtn.p,.cbtn.g,.start-btn{background:#3A646D;color:#fff;border:0}.cbtn.d{background:#FCEBEB;color:#A32D2D;border-color:#F09595}.rbtn{background:#F3F4F7;border-color:#BED4DB;color:#3A646D}.rbtn.active{background:#3A646D;color:#fff}.rbtn.answered{border-color:#80B4BF}
+.notes-p{display:none}.notes-card{background:#fff;border:1px solid #BED4DB;border-top:3px solid #80B4BF;border-radius:5px;padding:.8rem}.note{color:#2C3E44;border-bottom:1px solid #EBF4F6}.notes-t{color:#3A646D}
+.score-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:.8rem}.score-summary div{background:#EBF4F6;border:1px solid #BED4DB;border-radius:5px;padding:.7rem}.score-summary span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#5A6A70;margin-bottom:.25rem}.score-summary strong{font-size:22px;color:#3A646D}.score-table-wrap{overflow:auto}.score-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff}.score-table th{position:sticky;top:0;background:#3A646D;color:#fff;text-align:left;padding:.5rem}.score-table td{border-bottom:1px solid #BED4DB;padding:.45rem;color:#2C3E44}.score-table tr.above td:last-child{color:#3A646D;font-weight:700}.score-table tr.below td:last-child{color:#A32D2D;font-weight:700}
+.ic{background:#fff;color:#2C3E44;border-color:#BED4DB}.ic-h1{color:#2C3E44}.ic-box{background:#F3F4F7;border-color:#BED4DB}.ic-box p,.regel{color:#2C3E44}.ic-box-t{color:#3A646D}
+@media(min-width:1024px){.sb{width:220px}.ct{overflow:hidden}.chart-p{min-height:0}.fp{min-height:0}.panel{padding:.5rem .6rem}.stat-big{font-size:30px}.qgrid{gap:.2rem}.rbtn{min-height:32px}.cbtn{min-height:34px}}
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -620,11 +633,11 @@ body{font-family:'Montserrat',sans-serif;background:#1A2830;color:#E8F4F6;
     </div>
 
     <div class="panel">
-      <div class="panel-t">Fordeling denne runde</div>
+      <div class="panel-t">Governanceprofil denne runde</div>
       <div class="qgrid">
-        <div class="qc g"><div class="qn g" id="count-good">0</div><div class="ql g">Bedste</div></div>
+        <div class="qc g"><div class="qn g" id="count-good">0</div><div class="ql g">Stærk</div></div>
         <div class="qc n"><div class="qn n" id="count-neutral">0</div><div class="ql n">Neutral</div></div>
-        <div class="qc b"><div class="qn b" id="count-bad">0</div><div class="ql b">Kritisk</div></div>
+        <div class="qc b"><div class="qn b" id="count-bad">0</div><div class="ql b">Svag</div></div>
       </div>
     </div>
 
@@ -640,6 +653,8 @@ body{font-family:'Montserrat',sans-serif;background:#1A2830;color:#E8F4F6;
     <div class="panel">
       <div class="panel-t">Session</div>
       <div style="display:flex;flex-direction:column;gap:.3rem">
+        <button class="cbtn g" onclick="showPanel('scorecard')">▦ Scorecard</button>
+        <button class="cbtn g" onclick="showPanel('notes')">💡 Noter</button>
         <button class="cbtn g" onclick="showPanel('debrief')">⊡ Afslut → Debriefing</button>
         <button class="cbtn g" onclick="showPanel('overview')">⊞ Samlet oversigt</button>
         <button class="cbtn d" onclick="resetSession()" style="width:100%;margin-top:.1rem">↺ Nulstil / Intro</button>
@@ -659,11 +674,29 @@ body{font-family:'Montserrat',sans-serif;background:#1A2830;color:#E8F4F6;
     <!-- Chart -->
     <div id="panel-chart" style="display:flex;flex-direction:column;gap:.5rem;flex:1;min-height:0">
       <div class="chart-p">
-        <div class="chart-t">Svarfordeling – hvad valgte grupperne?</div>
-        <div id="bars"><div class="waiting">Afventer at deltagerne svarer...</div></div>
+        <div class="chart-t">Svarfordeling – hvilke beslutninger trak modenheden op eller ned?</div>
+        <div id="bars"><div class="waiting">Afventer deltagernes valg...</div></div>
       </div>
       <div class="notes-p" id="facilitator-notes"></div>
       <button class="notes-toggle" onclick="toggleNotes()" id="notes-toggle-btn">💡 Vis facilitatornotes</button>
+    </div>
+
+    <!-- Scorecard -->
+    <div id="panel-scorecard" class="fp">
+      <div class="fp-h">
+        <div class="fp-t">Scorecard – alle grupper</div>
+        <button class="fp-back" onclick="showPanel('chart')">← Tilbage til live</button>
+      </div>
+      <div id="scorecard-content" style="overflow-y:auto;flex:1"></div>
+    </div>
+
+    <!-- Notes -->
+    <div id="panel-notes" class="fp">
+      <div class="fp-h">
+        <div class="fp-t">Facilitatornoter – aktuel runde</div>
+        <button class="fp-back" onclick="showPanel('chart')">← Tilbage til live</button>
+      </div>
+      <div id="notes-panel-content" style="overflow-y:auto;flex:1"></div>
     </div>
 
     <!-- Debrief -->
@@ -730,8 +763,11 @@ const ROUND_META=[
 
 function updateNotes(r){
   const n=ROUND_META[r].notes;
-  document.getElementById('facilitator-notes').innerHTML=
-    `<div class="notes-t">Facilitatornotes · Runde ${r+1}</div>${n.map(x=>`<div class="note"><span class="ni">${x.icon}</span><span>${x.text}</span></div>`).join('')}`;
+  const html = `<div class="notes-t">Facilitatornoter · Runde ${r+1}</div>${n.map(x=>`<div class="note"><span class="ni">${x.icon}</span><span>${x.text}</span></div>`).join('')}`;
+  const inline = document.getElementById('facilitator-notes');
+  const panel = document.getElementById('notes-panel-content');
+  if(inline) inline.innerHTML = html;
+  if(panel) panel.innerHTML = `<div class="notes-card">${html}<div class="dh" style="margin-top:.75rem"><div class="dh-l">Debrief-spørgsmål</div><div class="dh-t">${ROUND_META[r].debrief}</div></div></div>`;
 }
 
 function prevRound(){
@@ -784,18 +820,70 @@ function toggleNotes(){
   }
 }
 
+// ── SCORECARD ────────────────────────────────────────────────────────────
+function dkk(n){return new Intl.NumberFormat('da-DK',{style:'currency',currency:'DKK',maximumFractionDigits:0}).format(n||0)}
+function calcFacilitatorScore(st){
+  const raw=(st.drift*15 + st.compliance*35 + st.omdoemme*20 + st.ledelse*30);
+  return Math.round(Math.max(0,Math.min(100,50 + raw/4)));
+}
+function buildScoreRows(){
+  const ids=new Set();
+  Object.values(window.allAnswers||{}).forEach(r=>Object.keys(r||{}).forEach(id=>ids.add(id)));
+  return [...ids].map(id=>{
+    const st={id,drift:0,compliance:0,omdoemme:0,ledelse:0,econTotal:0,answered:0,lastTs:0};
+    let latest=null;
+    for(let i=0;i<11;i++){
+      const a=(window.allAnswers[i]||{})[id];
+      if(!a) continue;
+      st.answered++;
+      st.lastTs=Math.max(st.lastTs,a.ts||0);
+      if(a.cumulative){ latest=a.cumulative; }
+      else {
+        st.drift += a.drift||0;
+        st.compliance += a.compliance||0;
+        st.omdoemme += a.omdoemme||0;
+        st.ledelse += a.ledelse||0;
+        st.econTotal += a.econImpact||0;
+      }
+    }
+    if(latest){
+      st.drift=latest.drift||0;st.compliance=latest.compliance||0;st.omdoemme=latest.omdoemme||0;st.ledelse=latest.ledelse||0;st.econTotal=latest.econTotal||0;st.score=latest.score ?? calcFacilitatorScore(st);
+    } else st.score=calcFacilitatorScore(st);
+    return st;
+  }).sort((a,b)=>b.score-a.score || a.econTotal-b.econTotal);
+}
+function renderScorecard(){
+  const el=document.getElementById('scorecard-content'); if(!el) return;
+  const rows=buildScoreRows();
+  if(!rows.length){el.innerHTML='<div class="waiting">Scorecard vises, når grupperne har svaret.</div>';return;}
+  const avg=Math.round(rows.reduce((s,r)=>s+r.score,0)/rows.length);
+  const avgEcon=Math.round(rows.reduce((s,r)=>s+r.econTotal,0)/rows.length);
+  el.innerHTML=`
+    <div class="score-summary">
+      <div><span>Gennemsnitlig modenhedsscore</span><strong>${avg}/100</strong></div>
+      <div><span>Gennemsnitlig økonomisk konsekvens</span><strong>${dkk(avgEcon)}</strong></div>
+      <div><span>Antal grupper</span><strong>${rows.length}</strong></div>
+    </div>
+    <div class="score-table-wrap"><table class="score-table">
+      <thead><tr><th>Gruppe</th><th>Runder</th><th>Drift</th><th>Compliance</th><th>Omdømme</th><th>Ledelse</th><th>Økonomi</th><th>Score</th><th>Status</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr class="${r.score>=avg?'above':'below'}"><td>${r.id}</td><td>${r.answered}/11</td><td>${r.drift}</td><td>${r.compliance}</td><td>${r.omdoemme}</td><td>${r.ledelse}</td><td>${dkk(r.econTotal)}</td><td><strong>${r.score}</strong></td><td>${r.score>=avg?'Over snit':'Under snit'}</td></tr>`).join('')}</tbody>
+    </table></div>`;
+}
+
 // ── DEBRIEF ───────────────────────────────────────────────────────────────
 // ── DEBRIEF STATE ─────────────────────────────────────────────────────────
 let debriefStep = 1; // 1=spejling, 2=fordybning, 3=forpligtelse
 let debriefFaseIdx = 0; // hvilken fase vi er på i trin 2
 
 function showPanel(n){
-  ['chart','debrief','overview'].forEach(p=>{
+  ['chart','scorecard','notes','debrief','overview'].forEach(p=>{
     const el=document.getElementById('panel-'+p);
     if(!el) return;
     el.style.display=p===n?(p==='chart'?'flex':'flex'):'none';
     if(p===n&&p!=='chart') el.style.flexDirection='column';
   });
+  if(n==='scorecard') renderScorecard();
+  if(n==='notes') updateNotes(currentRound);
   if(n==='debrief'){debriefStep=1;debriefFaseIdx=0;renderDebrief();}
   if(n==='overview') renderOverview();
 }
@@ -853,7 +941,7 @@ function renderDebriefSpejling(ans, tot){
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-bottom:.75rem">
         <div style="background:#1A3A2A;border:1px solid #3A6A4A;border-radius:4px;padding:.65rem;text-align:center">
           <div style="font-size:32px;font-weight:700;color:#5DC8A0;line-height:1">${pG}%</div>
-          <div style="font-size:8px;color:#5DC8A0;font-weight:700;text-transform:uppercase;margin-top:.2rem">Bedste valg</div>
+          <div style="font-size:8px;color:#5DC8A0;font-weight:700;text-transform:uppercase;margin-top:.2rem">Stærk valg</div>
           <div style="font-size:9px;color:#7A9DA5;margin-top:.1rem">${good} af ${tot}</div>
         </div>
         <div style="background:#3A3520;border:1px solid #8B7A30;border-radius:4px;padding:.65rem;text-align:center">
@@ -863,7 +951,7 @@ function renderDebriefSpejling(ans, tot){
         </div>
         <div style="background:#3A1A1A;border:1px solid #8B3A3A;border-radius:4px;padding:.65rem;text-align:center">
           <div style="font-size:32px;font-weight:700;color:#E05555;line-height:1">${pB}%</div>
-          <div style="font-size:8px;color:#E05555;font-weight:700;text-transform:uppercase;margin-top:.2rem">Kritisk valg</div>
+          <div style="font-size:8px;color:#E05555;font-weight:700;text-transform:uppercase;margin-top:.2rem">Svag valg</div>
           <div style="font-size:9px;color:#7A9DA5;margin-top:.1rem">${bad} af ${tot}</div>
         </div>
       </div>
@@ -1086,7 +1174,7 @@ function renderOverview(){
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.25rem;margin-left:30px">
-        ${[['Bedste','#5DC8A0',pG],['Neutral','#D4B840',pN],['Kritisk','#E05555',pB]].map(([l,c,p])=>`
+        ${[['Stærk','#5DC8A0',pG],['Neutral','#D4B840',pN],['Svag','#E05555',pB]].map(([l,c,p])=>`
         <div><div style="font-size:7.5px;color:${c};font-weight:600;margin-bottom:2px">${l} ${p}%</div>
         <div style="height:4px;background:#1A2830;border-radius:2px;overflow:hidden"><div style="height:100%;width:${p}%;background:${c};border-radius:2px"></div></div></div>`).join('')}
       </div></div>`;
