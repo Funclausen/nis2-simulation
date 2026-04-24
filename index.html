@@ -407,9 +407,21 @@ function shuffle(arr) {
 function shuffleRounds(rounds){return rounds.map(r=>({...r,choices:shuffle(r.choices)}))}
 function dkk(n){return n?new Intl.NumberFormat('da-DK',{style:'currency',currency:'DKK',maximumFractionDigits:0}).format(n):'–'}
 function calcScore(st){
+  // Modenhedsscore beregnes primært ud fra beslutningskvalitet, ikke rå plus/minus-tal.
+  // Det gør scoren mere forståelig for deltagere og matcher facilitatorens scorecard.
+  if(st && Array.isArray(st.chosen) && st.chosen.length){
+    const points={good:100,neutral:55,bad:15};
+    let total=0;
+    st.chosen.forEach(c=>{
+      const q=ROUNDS?.[c.round]?.choices?.[c.idx]?.quality || 'neutral';
+      total += points[q] ?? 55;
+    });
+    const decisionScore = total / st.chosen.length;
+    const econPenalty = Math.min(15, (st.econTotal || 0) / 1500000 * 15);
+    return Math.round(Math.max(0,Math.min(100,decisionScore - econPenalty)));
+  }
   const raw=(st.drift*15 + st.compliance*35 + st.omdoemme*20 + st.ledelse*30);
-  const pct=Math.max(0,Math.min(100,50 + raw/4));
-  return Math.round(pct);
+  return Math.round(Math.max(0,Math.min(100,50 + raw/4)));
 }
 function getProfile(st){const s=calcScore(st);return s>=75?'robust':s>=55?'driftsfokus':s>=35?'reaktiv':'sarbar'}
 function sg(v){return v>0?'+':''}
@@ -884,15 +896,51 @@ function restart(){
   render();
 }
 
+
+// ─── PDF FONT: MONTSERRAT WITH DANISH CHARACTERS ─────────────────────────
+async function arrayBufferToBase64(buffer){
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for(let i=0;i<bytes.length;i+=chunkSize){
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function loadMontserratPDF(doc){
+  if(doc.__montserratLoaded) return;
+  const base = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/montserrat/';
+  const fonts = [
+    { file:'Montserrat-Regular.ttf', family:'Montserrat', style:'normal', url:base+'Montserrat-Regular.ttf' },
+    { file:'Montserrat-Bold.ttf', family:'Montserrat', style:'bold', url:base+'Montserrat-Bold.ttf' }
+  ];
+  for(const f of fonts){
+    const res = await fetch(f.url);
+    if(!res.ok) throw new Error('Kunne ikke indlæse PDF-font: ' + f.file);
+    const base64 = await arrayBufferToBase64(await res.arrayBuffer());
+    doc.addFileToVFS(f.file, base64);
+    doc.addFont(f.file, f.family, f.style);
+  }
+  doc.__montserratLoaded = true;
+  doc.setFont('Montserrat','normal');
+}
+
 // ─── PDF ─────────────────────────────────────────────────────────────────
-function genPDF(){
+async function genPDF(){
   if(typeof window.jspdf === 'undefined'){
     alert('PDF-biblioteket er ikke indlæst. Prøv at genindlæse siden.');
     return;
   }
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  doc.setFont('helvetica','normal');
+  try{
+    await loadMontserratPDF(doc);
+  }catch(err){
+    alert('PDF-fonten Montserrat kunne ikke indlæses. Tjek internetforbindelsen og prøv igen.');
+    console.error(err);
+    return;
+  }
   const M=16,W=210,H=297,CW=W-M*2;
   const C={
     jade:[58,100,109],teal:[128,180,191],shy:[190,212,219],pale:[235,244,246],
@@ -929,15 +977,15 @@ function genPDF(){
   function topbar(){
     doc.setFillColor(...C.jade);doc.rect(0,0,W,14,'F');
     doc.setFillColor(...C.teal);doc.rect(0,14,W,1.5,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(8);
+    doc.setFont('Montserrat','bold');doc.setFontSize(8);
     doc.setTextColor(255,255,255);
     doc.text('ERHVERVSAKADEMI AARHUS',M,9);
-    doc.setFont('helvetica','normal');doc.setFontSize(7);
+    doc.setFont('Montserrat','normal');doc.setFontSize(7);
     doc.text('NIS2 Compliance · eaaa.dk/nis',W-M,9,{align:'right'});
   }
   function footer(label){
     doc.setFillColor(...C.qgray);doc.rect(0,H-12,W,12,'F');
-    doc.setFont('helvetica','normal');doc.setFontSize(7);
+    doc.setFont('Montserrat','normal');doc.setFontSize(7);
     doc.setTextColor(...C.gray);
     doc.text('DataBridge Solutions A/S · NIS2 Ledelsessimulation',M,H-4);
     doc.text(label,W-M,H-4,{align:'right'});
@@ -949,7 +997,7 @@ function genPDF(){
   function sr(x,y,w,h,col,lw=0.3){
     doc.setDrawColor(...col);doc.setLineWidth(lw);doc.rect(x,y,w,h,'S');
   }
-  function sf(weight,size){doc.setFont('helvetica',weight);doc.setFontSize(size);}
+  function sf(weight,size){doc.setFont('Montserrat',weight);doc.setFontSize(size);}
   function sc(col){doc.setTextColor(...col);}
   function checkY(y,needed,footerLabel){
     if(y+needed>H-18){
