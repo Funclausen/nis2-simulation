@@ -21,10 +21,34 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 let currentRound = 0;
+let currentSessionId = null;
 window.allAnswers = {};
+window.rawAnswers = {};
+
+// Filtrer kun svar fra aktuel session
+function filterAnswers(raw) {
+  if(!currentSessionId) return {};
+  const out = {};
+  Object.entries(raw||{}).forEach(([round, answers]) => {
+    const kept = {};
+    Object.entries(answers||{}).forEach(([id, ans]) => {
+      if(ans && ans.sessionId === currentSessionId) kept[id] = ans;
+    });
+    out[round] = kept;
+  });
+  return out;
+}
+
+// Lyt på session/id
+onValue(ref(db,'session/id'), snap => {
+  currentSessionId = snap.val() || null;
+  window.allAnswers = filterAnswers(window.rawAnswers);
+  updateDisplay();
+});
 
 onValue(ref(db,'answers'), snap => {
-  window.allAnswers = snap.val() || {};
+  window.rawAnswers = snap.val() || {};
+  window.allAnswers = filterAnswers(window.rawAnswers);
   updateDisplay();
 });
 
@@ -38,9 +62,10 @@ function updateDisplay() {
   const exp = window.expectedParticipants || 1;
   const pct = Math.min(100,Math.round((total/exp)*100));
   el('progress-text').textContent = total>0 ? `${total} af ${exp} (${pct}%)` : 'Afventer svar...';
-  el('current-round-label').textContent = `Runde ${currentRound+1} af 11 · ${ROUND_META[currentRound].time}`;
-  el('round-module').textContent = ROUND_META[currentRound].module;
-  el('round-law').textContent = ROUND_META[currentRound].lawRef;
+  const r = ROUND_META[currentRound];
+  el('current-round-label').textContent = `Runde ${currentRound+1} af 8 · ${r.time}`;
+  el('round-module').textContent = r.module;
+  el('round-law').textContent = r.lawRef;
   const counts={good:0,bad:0,neutral:0};
   const choiceCounts={};
   entries.forEach(e=>{
@@ -61,15 +86,15 @@ function updateDisplay() {
     const bp=Math.round((count/max)*100);
     return `<div class="bar-row"><div class="bar-label">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${bp}%"></div></div><div class="bar-count">${count} <span class="bar-pct">(${p}%)</span></div></div>`;
   }).join('');
-  if(document.getElementById('debrief-content').parentElement.style.display!=='none') renderDebrief();
-  if(document.getElementById('overview-content').parentElement.style.display!=='none') renderOverview();
-  document.querySelectorAll('.round-btn').forEach((btn,i)=>{
+  if(document.getElementById('debrief-content')?.parentElement?.style.display!=='none') renderDebrief();
+  if(document.getElementById('overview-content')?.parentElement?.style.display!=='none') renderOverview();
+  if(document.getElementById('scorecard-content')?.parentElement?.style.display!=='none') renderScorecard();
+  document.querySelectorAll('.rbtn').forEach((btn,i)=>{
     const rndAnswers=Object.keys(window.allAnswers[i]||{}).length;
     btn.classList.toggle('answered', rndAnswers>0);
   });
 }
 
-// Timer
 let timerStart=null, timerInterval=null;
 window.startTimer=function(){
   timerStart=Date.now();
@@ -79,7 +104,7 @@ window.startTimer=function(){
     const s=Math.floor((Date.now()-timerStart)/1000);
     const m=Math.floor(s/60), sc=s%60;
     el.textContent=`${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;
-    el.style.color = m>=28?'#E05555':m>=22?'#D4B840':'#5DC8A0';
+    el.style.color = m>=28?'#A32D2D':m>=22?'#C8A020':'#3A646D';
   },1000);
 };
 
@@ -88,37 +113,52 @@ window.setRound=function(r){
   set(ref(db,'session/activeRound'),r);
   updateDisplay();
   updateNotes(r);
-  document.querySelectorAll('.round-btn').forEach((b,i)=>b.classList.toggle('active',i===r));
+  document.querySelectorAll('.rbtn').forEach((b,i)=>b.classList.toggle('active',i===r));
   showPanel('chart');
 };
-window.startSession=function(){
-  remove(ref(db,'answers'));
-  set(ref(db,'session/resetSignal'),Date.now());
-  set(ref(db,'session/activeRound'),0);
-  set(ref(db,'session/state'),'active');
+
+window.startSession=async function(){
+  const newSid='ses-'+Date.now();
+  await remove(ref(db,'answers')).catch(()=>{});
+  await set(ref(db,'session/resetSignal'),Date.now());
+  await set(ref(db,'session/activeRound'),0);
+  await set(ref(db,'session/id'),newSid);
+  await set(ref(db,'session/state'),'active');
+  currentSessionId=newSid;
+  window.rawAnswers={};
   window.allAnswers={};
   currentRound=0;
   window.expectedParticipants=parseInt(document.getElementById('expected-input').value)||15;
   window.startTimer();
   showScreen('live');
   setTimeout(()=>{
-    document.querySelectorAll('.round-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+    document.querySelectorAll('.rbtn').forEach((b,i)=>b.classList.toggle('active',i===0));
     updateNotes(0);
     updateDisplay();
   },100);
 };
-window.resetSession=function(){
+
+window.resetSession=async function(){
   if(!confirm('Nulstil alle svar og gå til intro?')) return;
   clearInterval(timerInterval);timerStart=null;
   const td=document.getElementById('timer-display');
-  if(td){td.textContent='00:00';td.style.color='#5DC8A0';}
-  remove(ref(db,'answers'));
-  set(ref(db,'session/resetSignal'),Date.now());
-  set(ref(db,'session/activeRound'),0);
-  set(ref(db,'session/state'),'waiting');
+  if(td){td.textContent='00:00';td.style.color='#3A646D';}
+  await remove(ref(db,'answers')).catch(()=>{});
+  await set(ref(db,'session/resetSignal'),Date.now());
+  await set(ref(db,'session/activeRound'),0);
+  await set(ref(db,'session/id'),null);
+  await set(ref(db,'session/state'),'waiting');
+  currentSessionId=null;
+  currentRound=0;
+  window.rawAnswers={};
   window.allAnswers={};
+  document.querySelectorAll('.rbtn').forEach((b,i)=>{
+    b.classList.toggle('active',i===0);
+    b.classList.remove('answered');
+  });
   showScreen('intro');
 };
+
 window.setExpected=function(n){window.expectedParticipants=parseInt(n)||1;updateDisplay();};
 window.addEventListener('load',()=>{window.expectedParticipants=15;showScreen('intro');});
 </script>
@@ -936,6 +976,7 @@ body{font-family:'Montserrat',sans-serif;background:#F3F4F7;color:#2C3E44;
       <div class="panel-t">Session</div>
       <div style="display:flex;flex-direction:column;gap:.3rem">
         <button class="cbtn g" onclick="showPanel('notes')">💡 Facilitatornotes</button>
+        <button class="cbtn g" onclick="showPanel('scorecard')">▦ Scorecard</button>
         <button class="cbtn g" onclick="showPanel('debrief')">⊡ Afslut → Debriefing</button>
         <button class="cbtn g" onclick="showPanel('overview')">⊞ Samlet oversigt</button>
         <button class="cbtn d" onclick="resetSession()" style="width:100%;margin-top:.1rem">↺ Nulstil / Intro</button>
@@ -957,6 +998,17 @@ body{font-family:'Montserrat',sans-serif;background:#F3F4F7;color:#2C3E44;
       <div class="chart-p">
         <div class="chart-t">Svarfordeling – hvad valgte grupperne?</div>
         <div id="bars"><div class="waiting">Afventer at deltagerne svarer...</div></div>
+      </div>
+    </div>
+
+    <!-- Scorecard -->
+    <div id="panel-scorecard" class="fp">
+      <div class="fp-h">
+        <div class="fp-t">Scorecard – alle grupper</div>
+        <button class="fp-back" onclick="showPanel('chart')">← Tilbage til live</button>
+      </div>
+      <div id="scorecard-content" style="overflow-y:auto;flex:1">
+        <div class="waiting">Scorecard vises når grupperne har svaret på tværs af alle runder.</div>
       </div>
     </div>
 
@@ -1105,15 +1157,104 @@ let debriefStep = 1; // 1=spejling, 2=fordybning, 3=forpligtelse
 let debriefFaseIdx = 0; // hvilken fase vi er på i trin 2
 
 function showPanel(n){
-  ['chart','notes','debrief','overview'].forEach(p=>{
+  ['chart','scorecard','notes','debrief','overview'].forEach(p=>{
     const el=document.getElementById('panel-'+p);
     if(!el) return;
     el.style.display=p===n?(p==='chart'?'flex':'flex'):'none';
     if(p===n&&p!=='chart') el.style.flexDirection='column';
   });
+  if(n==='scorecard') renderScorecard();
   if(n==='notes') updateNotes(currentRound);
   if(n==='debrief'){debriefStep=1;debriefFaseIdx=0;renderDebrief();}
   if(n==='overview') renderOverview();
+}
+
+// ── SCORECARD ─────────────────────────────────────────────────────────────
+function dkk(n){return new Intl.NumberFormat('da-DK',{style:'currency',currency:'DKK',maximumFractionDigits:0}).format(n||0)}
+
+function buildScoreRows(){
+  const ids=new Set();
+  Object.values(window.allAnswers||{}).forEach(r=>Object.keys(r||{}).forEach(id=>ids.add(id)));
+  return [...ids].map(id=>{
+    const st={id,good:0,neutral:0,bad:0,answered:0,econTotal:0};
+    for(let i=0;i<8;i++){
+      const a=(window.allAnswers[i]||{})[id];
+      if(!a) continue;
+      st.answered++;
+      if(a.quality==='good') st.good++;
+      else if(a.quality==='bad') st.bad++;
+      else st.neutral++;
+      st.econTotal += a.econImpact||0;
+    }
+    // Modenhedsscore: god=100, neutral=55, dårlig=15 → vægtet snit
+    const score = st.answered
+      ? Math.round(((st.good*100)+(st.neutral*55)+(st.bad*15))/st.answered)
+      : 0;
+    st.score = score;
+    return st;
+  }).sort((a,b)=>b.score-a.score);
+}
+
+function renderScorecard(){
+  const el=document.getElementById('scorecard-content');
+  if(!el) return;
+  const rows=buildScoreRows();
+  if(!rows.length){
+    el.innerHTML='<div class="waiting">Scorecard vises når grupperne har svaret. Det samler besvarelser på tværs af alle 8 runder.</div>';
+    return;
+  }
+  const avg=Math.round(rows.reduce((s,r)=>s+r.score,0)/rows.length);
+  const avgAnswered=(rows.reduce((s,r)=>s+r.answered,0)/rows.length).toFixed(1);
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-bottom:.75rem">
+      <div style="background:#EBF4F6;border:1px solid #BED4DB;border-radius:4px;padding:.6rem;text-align:center">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:#3A646D;margin-bottom:.2rem">Gns. modenhed</div>
+        <div style="font-size:24px;font-weight:700;color:#3A646D">${avg}/100</div>
+      </div>
+      <div style="background:#F3F4F7;border:1px solid #BED4DB;border-radius:4px;padding:.6rem;text-align:center">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:#5A6A70;margin-bottom:.2rem">Grupper</div>
+        <div style="font-size:24px;font-weight:700;color:#2C3E44">${rows.length}</div>
+      </div>
+      <div style="background:#F3F4F7;border:1px solid #BED4DB;border-radius:4px;padding:.6rem;text-align:center">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:#5A6A70;margin-bottom:.2rem">Gns. runder</div>
+        <div style="font-size:24px;font-weight:700;color:#2C3E44">${avgAnswered}/8</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#808B94;margin-bottom:.65rem;line-height:1.5">
+      Modenhedsscoren beregnes ud fra beslutningskvalitet: stærke valg vægter 100, neutrale 55 og svage 15.
+    </div>
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+      <thead>
+        <tr style="background:#3A646D;color:white">
+          <th style="text-align:left;padding:.45rem .6rem;font-weight:600">Gruppe</th>
+          <th style="text-align:center;padding:.45rem .4rem;font-weight:600">Runder</th>
+          <th style="text-align:center;padding:.45rem .4rem;font-weight:600;color:#BED4DB">Stærk</th>
+          <th style="text-align:center;padding:.45rem .4rem;font-weight:600;color:#F4EBC0">Neutral</th>
+          <th style="text-align:center;padding:.45rem .4rem;font-weight:600;color:#F09595">Svag</th>
+          <th style="text-align:right;padding:.45rem .6rem;font-weight:600">Score</th>
+          <th style="text-align:right;padding:.45rem .6rem;font-weight:600">Vs. snit</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(r=>{
+          const diff = r.score - avg;
+          const diffStr = diff>0?`+${diff}`:String(diff);
+          const diffCol = diff>0?'#3A646D':diff<0?'#A32D2D':'#808B94';
+          const bg = r.score > avg ? '#EBF4F6' : r.score < avg ? '#FFF5F5' : '#fff';
+          return `<tr style="background:${bg};border-bottom:1px solid #BED4DB">
+            <td style="padding:.4rem .6rem;color:#2C3E44;font-weight:600">${r.id}</td>
+            <td style="text-align:center;padding:.4rem;color:#5A6A70">${r.answered}/8</td>
+            <td style="text-align:center;padding:.4rem;color:#3A646D;font-weight:600">${r.good}</td>
+            <td style="text-align:center;padding:.4rem;color:#5A4A10">${r.neutral}</td>
+            <td style="text-align:center;padding:.4rem;color:#A32D2D;font-weight:600">${r.bad}</td>
+            <td style="text-align:right;padding:.4rem .6rem;font-weight:700;color:#2C3E44">${r.score}</td>
+            <td style="text-align:right;padding:.4rem .6rem;font-weight:700;color:${diffCol}">${diffStr}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>`;
 }
 
 function renderDebrief(){
