@@ -3,109 +3,911 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NIS2 Facilitator - DataBridge Solutions A/S</title>
+<title>NIS2 Facilitator – DataBridge Solutions A/S</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{min-height:100%;font-family:'Montserrat',system-ui,sans-serif;background:#F3F4F7;color:#2C3E44}
-body{display:flex;flex-direction:column}
+html{height:100%}
+body{height:100%;display:flex;flex-direction:column;font-family:'Montserrat',system-ui,sans-serif;background:#F3F4F7;color:#2C3E44}
 button,input{font:inherit}
-.topbar{background:#3A646D;border-bottom:3px solid #80B4BF;color:white;padding:.65rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;box-shadow:0 1px 5px rgba(0,0,0,.12)}
-.tb-left{display:flex;align-items:center;gap:.65rem;min-width:0}.tb-logo{height:24px;filter:brightness(0) invert(1);opacity:.92}.tb-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-left:1px solid rgba(255,255,255,.35);padding-left:.65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tb-right{display:flex;align-items:center;gap:.75rem}.timer-box{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:5px;padding:.3rem .75rem;display:flex;align-items:center;gap:.5rem}.timer-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#C8E0E5}#timer-display{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}.live-badge{font-size:10px;color:#C8E0E5}.pulse{width:7px;height:7px;border-radius:50%;background:#80B4BF;display:inline-block;margin-right:.35rem;animation:pulse 1.7s infinite}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-.screen{display:none;flex:1}.screen.active{display:flex}#intro-screen{align-items:flex-start;justify-content:center;padding:1.25rem;overflow-y:auto}.intro-card{background:white;border:1px solid #BED4DB;border-top:4px solid #3A646D;border-radius:6px;max-width:980px;width:100%;padding:1.25rem;box-shadow:0 2px 10px rgba(0,0,0,.06)}h1{font-size:24px;line-height:1.2;margin-bottom:.9rem}.incident{background:#1A2830;border:1px solid #3A646D;border-radius:5px;overflow:hidden;margin-bottom:1rem}.incident-head{background:#A32D2D;color:white;padding:.7rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}.incident-head strong{display:block;font-size:15px}.incident-head span{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.72)}.fact-grid{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid #3A646D}.fact{padding:.75rem;border-right:1px solid #3A646D}.fact:last-child{border-right:none}.fact small{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#80B4BF;margin-bottom:.25rem}.fact b{display:block;color:#E8F4F6;font-size:13px}.fact p{font-size:10.5px;color:#7A9DA5;margin-top:.15rem}.rules{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin:1rem 0}.rule-box{background:#F3F4F7;border:1px solid #BED4DB;border-radius:5px;padding:.8rem}.rule-box h2{font-size:10px;color:#3A646D;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.45rem}.rule{display:flex;gap:.45rem;padding:.35rem 0;border-bottom:1px solid #DCE8EC;font-size:12px;line-height:1.45}.rule:last-child{border-bottom:none}.rule-n{width:20px;height:20px;border-radius:50%;background:#3A646D;color:white;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}.url-box{background:#EBF4F6;border:1px solid #BED4DB;border-radius:5px;padding:.9rem;text-align:center;margin-bottom:1rem}.url-box small{display:block;font-size:10px;color:#808B94;text-transform:uppercase;font-weight:700;letter-spacing:.05em;margin-bottom:.5rem}.url-box .url{font-size:14px;font-weight:700;color:#3A646D;word-break:break-all}.setup-row{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-bottom:.8rem}.setup-row label{font-size:12px;color:#5A6A70;font-weight:600}.setup-row input{width:76px;border:1px solid #BED4DB;border-radius:4px;padding:.4rem .55rem}.start-btn{width:100%;border:0;border-radius:5px;background:#3A646D;color:white;padding:1rem;font-weight:700;cursor:pointer}.start-btn:hover{background:#2C4F57}.note-small{font-size:10px;color:#808B94;text-align:center;margin-top:.55rem}
-#live-screen{min-height:0}.sidebar{width:250px;flex-shrink:0;background:white;border-right:1px solid #BED4DB;padding:.65rem;display:flex;flex-direction:column;gap:.55rem;overflow-y:auto}.content{flex:1;min-width:0;padding:.65rem;display:flex;flex-direction:column;gap:.55rem;overflow-y:auto}.panel{background:white;border:1px solid #BED4DB;border-radius:5px;padding:.75rem;box-shadow:0 1px 3px rgba(0,0,0,.04)}.panel-title{font-size:9px;color:#3A646D;text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:.45rem}.stat-big{font-size:38px;font-weight:700;text-align:center;color:#3A646D;line-height:1}#progress-text{font-size:10px;color:#808B94;text-align:center;margin-top:.25rem}.qgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.3rem}.qc{text-align:center;border-radius:4px;padding:.45rem .2rem}.qc.good{background:#EBF4F6;border:1px solid #80B4BF}.qc.neutral{background:#F4EBC0;border:1px solid #C8B86A}.qc.bad{background:#FCEBEB;border:1px solid #F09595}.qn{font-size:20px;font-weight:700}.ql{font-size:8px;font-weight:700;text-transform:uppercase;margin-top:.1rem}.good .qn,.good .ql{color:#3A646D}.neutral .qn,.neutral .ql{color:#5A4A10}.bad .qn,.bad .ql{color:#A32D2D}.round-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.25rem}.rbtn{border:1px solid #BED4DB;border-radius:4px;background:#F3F4F7;color:#5A6A70;min-height:36px;cursor:pointer;font-size:10px;font-weight:700}.rbtn.active{background:#3A646D;color:white;border-color:#3A646D}.rbtn.answered:not(.active){background:#EBF4F6;border-color:#3A646D;color:#3A646D}.controls{display:flex;gap:.35rem;margin-top:.35rem}.ctrl{flex:1;border:0;border-radius:4px;background:#3A646D;color:white;padding:.55rem .35rem;font-size:10px;font-weight:700;cursor:pointer}.ctrl.secondary{background:#EBF4F6;color:#3A646D;border:1px solid #80B4BF}.ctrl.danger{background:#FCEBEB;color:#A32D2D;border:1px solid #F09595}.stack{display:flex;flex-direction:column;gap:.35rem}.round-head{background:white;border:1px solid #BED4DB;border-left:4px solid #3A646D;border-radius:5px;padding:.75rem .9rem}.round-line{display:flex;justify-content:space-between;gap:.5rem;align-items:flex-start}.round-title{font-weight:700;color:#3A646D}.law{font-size:9px;font-weight:700;background:#EBF4F6;border:1px solid #80B4BF;border-radius:3px;color:#3A646D;padding:2px 7px;white-space:nowrap}.module{font-size:12px;color:#2C3E44;margin-top:.25rem;font-weight:600}.view{display:none;flex:1;min-height:220px}.view.active{display:block}.chart{min-height:250px}.bar-row{display:flex;align-items:center;gap:.55rem;margin-bottom:.55rem}.bar-label{width:240px;min-width:0;font-size:11px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bar-track{flex:1;height:26px;background:#F3F4F7;border-radius:3px;overflow:hidden}.bar-fill{height:100%;background:linear-gradient(90deg,#3A646D,#80B4BF);border-radius:3px;min-width:3px}.bar-count{width:64px;text-align:right;font-size:13px;font-weight:700}.muted{color:#808B94}.waiting{text-align:center;color:#808B94;padding:2rem;font-size:12px}.notes-list{display:grid;gap:.5rem}.note-item{display:flex;gap:.5rem;background:#EBF4F6;border:1px solid #BED4DB;border-left:3px solid #3A646D;border-radius:0 5px 5px 0;padding:.65rem;font-size:12px;line-height:1.5}.debrief-card{background:#1A2830;border:1px solid #3A646D;border-radius:5px;color:#C8E0E5;padding:.85rem;margin-bottom:.6rem}.debrief-card h3{font-size:13px;color:#E8F4F6;margin-bottom:.35rem}.debrief-card p{font-size:12px;line-height:1.55;color:#9CBBC2}.score-table{width:100%;border-collapse:collapse;font-size:12px}.score-table th,.score-table td{border-bottom:1px solid #DCE8EC;padding:.5rem;text-align:left}.score-table th{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#3A646D;background:#F3F4F7}.score-pill{display:inline-block;border-radius:999px;padding:.18rem .5rem;font-size:10px;font-weight:700}.score-pill.good{background:#EBF4F6;color:#3A646D}.score-pill.neutral{background:#F4EBC0;color:#5A4A10}.score-pill.bad{background:#FCEBEB;color:#A32D2D}
-@media(max-width:900px){#live-screen{flex-direction:column}.sidebar{width:100%;border-right:0;border-bottom:1px solid #BED4DB;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.content{padding:.5rem}.fact-grid,.rules{grid-template-columns:1fr 1fr}.bar-label{width:150px}}
-@media(max-width:600px){.topbar{align-items:flex-start}.tb-right{flex-direction:column;align-items:flex-end}.sidebar{grid-template-columns:1fr}.fact-grid,.rules{grid-template-columns:1fr}.fact{border-right:0;border-bottom:1px solid #3A646D}.bar-row{display:grid;grid-template-columns:1fr 52px;gap:.35rem}.bar-label{width:auto;grid-column:1 / -1}.bar-track{height:22px}.bar-count{width:auto}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Topbar ── */
+.topbar{background:#3A646D;border-bottom:3px solid #80B4BF;color:white;padding:.55rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-shrink:0}
+.tb-left{display:flex;align-items:center;gap:.65rem}
+.tb-logo{height:22px;filter:brightness(0) invert(1);opacity:.9}
+.tb-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-left:1px solid rgba(255,255,255,.3);padding-left:.65rem}
+.tb-right{display:flex;align-items:center;gap:1rem}
+.timer-group{display:flex;align-items:center;gap:.75rem}
+.timer-box{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:4px;padding:.25rem .65rem;text-align:center}
+.timer-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.6);display:block}
+.timer-val{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;color:white;line-height:1.2}
+.status-badge{display:flex;align-items:center;gap:.4rem;font-size:11px;color:rgba(255,255,255,.75)}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:#80B4BF;flex-shrink:0;animation:pulse 1.7s infinite}
+.pulse-dot.live{background:#6FCF97}
+
+/* ── Screen system ── */
+.screen{display:none;flex:1;min-height:0}
+.screen.active{display:flex}
+#intro-screen{overflow-y:auto;padding:1.25rem;justify-content:center;align-items:flex-start}
+#live-screen{flex-direction:row}
+
+/* ── App shell ── */
+.app-shell{display:flex;flex-direction:column;height:100vh}
+
+/* ══════════════════════════════════════════
+   INTRO-SKÆRM
+══════════════════════════════════════════ */
+.intro-wrap{max-width:1000px;width:100%;animation:fadeIn .3s ease}
+
+.intro-wrap h1{font-size:22px;font-weight:700;color:#2C3E44;margin-bottom:.35rem;line-height:1.2}
+.intro-wrap .lead{font-size:13px;color:#5A6A70;line-height:1.65;margin-bottom:1.25rem}
+
+.card{background:white;border:1px solid #BED4DB;border-top:3px solid #80B4BF;border-radius:5px;padding:1rem 1.1rem;margin-bottom:.85rem;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.card-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#3A646D;margin-bottom:.65rem}
+
+/* Scenariekort */
+.scenario-head{display:flex;align-items:flex-start;gap:.85rem;margin-bottom:.85rem;padding-bottom:.85rem;border-bottom:1px solid #BED4DB}
+.scenario-icon{width:44px;height:44px;border-radius:5px;background:#EBF4F6;border:1px solid #80B4BF;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#3A646D;flex-shrink:0}
+.scenario-name{font-size:15px;font-weight:700;color:#2C3E44;margin-bottom:.15rem}
+.scenario-sub{font-size:11px;color:#5A6A70;line-height:1.4}
+.tag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:3px;border:1px solid;margin-top:.3rem}
+.tag-teal{background:#EBF4F6;color:#3A646D;border-color:#80B4BF}
+.tag-warn{background:#FCEBEB;color:#A32D2D;border-color:#F09595}
+
+.fact-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:.85rem}
+.fact-item{background:#F3F4F7;border-left:3px solid #80B4BF;border-radius:0 4px 4px 0;padding:.5rem .6rem}
+.fact-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#808B94;margin-bottom:.15rem}
+.fact-val{font-size:12px;font-weight:700;color:#2C3E44}
+.fact-sub{font-size:10px;color:#808B94;margin-top:.1rem}
+
+/* Progression */
+.progression{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin-bottom:.85rem}
+.prog-step{background:#F3F4F7;border:1px solid #BED4DB;border-radius:4px;padding:.45rem .35rem;text-align:center}
+.prog-n{font-size:9px;font-weight:700;color:#3A646D;margin-bottom:.15rem}
+.prog-time{font-size:8px;color:#808B94;margin-bottom:.2rem}
+.prog-module{font-size:8px;color:#2C3E44;line-height:1.3;font-weight:600}
+
+/* Indikatorer */
+.ind-table{width:100%;border-collapse:collapse;font-size:12px}
+.ind-table th{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#3A646D;background:#F3F4F7;padding:.45rem .6rem;text-align:left;border-bottom:1px solid #BED4DB;font-weight:700}
+.ind-table td{padding:.5rem .6rem;border-bottom:1px solid #EEF2F4;vertical-align:top;line-height:1.5}
+.ind-table tr:last-child td{border-bottom:none}
+.ind-name{font-weight:700;color:#2C3E44}
+.ind-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;border:1px solid}
+
+/* To-kolonne grid */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.85rem}
+.rule-list{display:flex;flex-direction:column;gap:0}
+.rule-item{display:flex;align-items:flex-start;gap:.5rem;padding:.35rem 0;border-bottom:1px solid #DCE8EC;font-size:12px;line-height:1.45}
+.rule-item:last-child{border-bottom:none}
+.rule-n{width:20px;height:20px;border-radius:50%;background:#3A646D;color:white;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;margin-top:1px}
+
+/* QR + setup */
+.qr-setup{display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center}
+.qr-wrap{background:#EBF4F6;border:1px solid #BED4DB;border-radius:5px;padding:.75rem;text-align:center;display:flex;flex-direction:column;align-items:center}
+.qr-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#808B94;margin-bottom:.4rem}
+.qr-url{font-size:13px;font-weight:700;color:#3A646D;word-break:break-all;margin-top:.4rem}
+.setup-area{display:flex;flex-direction:column;gap:.75rem}
+.setup-row{display:flex;align-items:center;gap:.65rem}
+.setup-row label{font-size:12px;color:#5A6A70;font-weight:600}
+.setup-row input{width:76px;border:1px solid #BED4DB;border-radius:4px;padding:.4rem .55rem;font-size:13px}
+.start-btn{border:0;border-radius:5px;background:#3A646D;color:white;padding:.85rem 1.5rem;font-weight:700;font-size:14px;cursor:pointer;transition:background .15s;width:100%}
+.start-btn:hover{background:#2C4F57}
+.note-small{font-size:10px;color:#808B94;margin-top:.4rem;text-align:center}
+
+/* ══════════════════════════════════════════
+   LIVE-SKÆRM
+══════════════════════════════════════════ */
+.sidebar{width:220px;flex-shrink:0;background:white;border-right:1px solid #BED4DB;display:flex;flex-direction:column;overflow-y:auto}
+.sb-section{padding:.6rem .65rem;border-bottom:1px solid #EEF2F4}
+.sb-title{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#808B94;margin-bottom:.45rem}
+
+/* Nav-knapper i sidebar */
+.nav-btn{display:flex;align-items:center;gap:.5rem;width:100%;border:0;border-radius:4px;background:transparent;color:#5A6A70;padding:.45rem .55rem;font-size:11px;font-weight:600;cursor:pointer;text-align:left;transition:background .1s}
+.nav-btn:hover{background:#F3F4F7}
+.nav-btn.active{background:#EBF4F6;color:#3A646D}
+.nav-btn .nav-icon{width:14px;height:14px;border-radius:3px;background:#BED4DB;flex-shrink:0}
+.nav-btn.active .nav-icon{background:#3A646D}
+
+/* Runde-knapper */
+.round-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:.5rem}
+.rbtn{border:1px solid #BED4DB;border-radius:4px;background:#F3F4F7;color:#5A6A70;height:32px;cursor:pointer;font-size:10px;font-weight:700;transition:all .1s}
+.rbtn:hover{border-color:#3A646D;color:#3A646D}
+.rbtn.active{background:#3A646D;color:white;border-color:#3A646D}
+.rbtn.answered:not(.active){background:#EBF4F6;border-color:#80B4BF;color:#3A646D}
+.round-nav{display:flex;gap:4px}
+.rnav-btn{flex:1;border:1px solid #BED4DB;border-radius:4px;background:#F3F4F7;color:#5A6A70;padding:.4rem;font-size:10px;font-weight:700;cursor:pointer;transition:all .1s}
+.rnav-btn:hover{background:#EBF4F6;border-color:#3A646D;color:#3A646D}
+
+/* Danger zone */
+.danger-zone{padding:.6rem .65rem;margin-top:auto;border-top:1px solid #EEF2F4}
+.reset-btn{width:100%;border:1px solid #F09595;border-radius:4px;background:#FCEBEB;color:#A32D2D;padding:.45rem;font-size:10px;font-weight:700;cursor:pointer;transition:background .1s}
+.reset-btn:hover{background:#F7DADA}
+
+/* Hovedindhold */
+.content{flex:1;min-width:0;padding:.65rem;display:flex;flex-direction:column;gap:.65rem;overflow-y:auto}
+.panel{background:white;border:1px solid #BED4DB;border-radius:5px;padding:.75rem;flex-shrink:0}
+.panel-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#3A646D;margin-bottom:.55rem}
+
+/* Dashboard overblik – øverst */
+.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:.65rem}
+.dash-stat{background:#F3F4F7;border:1px solid #BED4DB;border-radius:5px;padding:.6rem .75rem;text-align:center}
+.dash-stat.highlight{background:#EBF4F6;border-color:#80B4BF}
+.dash-num{font-size:28px;font-weight:700;color:#3A646D;line-height:1}
+.dash-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#808B94;margin-top:.2rem}
+.dash-sub{font-size:10px;color:#5A6A70;margin-top:.15rem}
+
+/* Progressbar */
+.prog-bar-wrap{margin-bottom:.65rem}
+.prog-bar-track{height:6px;background:#E8EFF1;border-radius:3px;overflow:hidden}
+.prog-bar-fill{height:100%;background:#3A646D;border-radius:3px;transition:width .5s ease}
+.prog-bar-lbl{display:flex;justify-content:space-between;font-size:10px;color:#808B94;margin-top:.25rem}
+
+/* Runde-overblik tabel */
+.overview-table{width:100%;border-collapse:collapse;font-size:11px}
+.overview-table th{font-size:8px;text-transform:uppercase;letter-spacing:.06em;color:#3A646D;background:#F3F4F7;padding:.4rem .5rem;text-align:left;border-bottom:1px solid #BED4DB;font-weight:700}
+.overview-table td{padding:.45rem .5rem;border-bottom:1px solid #EEF2F4;vertical-align:middle}
+.overview-table tr:last-child td{border-bottom:none}
+.overview-table tr.current-row td{background:#EBF4F6}
+.ov-pill{display:inline-block;border-radius:3px;padding:1px 6px;font-size:9px;font-weight:700}
+.ov-pill.good{background:#EBF4F6;color:#3A646D}
+.ov-pill.neutral{background:#F4EBC0;color:#5A4A10}
+.ov-pill.bad{background:#FCEBEB;color:#A32D2D}
+.ov-pill.waiting{background:#F3F4F7;color:#808B94}
+
+/* Bar-visning */
+.bar-row{display:flex;align-items:center;gap:.55rem;margin-bottom:.45rem}
+.bar-label{flex:0 0 auto;width:280px;font-size:11px;line-height:1.4;color:#2C3E44;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.bar-track{flex:1;height:22px;background:#F3F4F7;border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;background:#3A646D;border-radius:3px;min-width:3px;transition:width .4s ease}
+.bar-count{width:56px;text-align:right;font-size:12px;font-weight:700;color:#2C3E44;flex-shrink:0}
+.bar-pct{font-size:10px;color:#808B94}
+
+/* Fordeling chips */
+.qgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:.35rem;margin-bottom:.5rem}
+.qc{text-align:center;border-radius:4px;padding:.45rem .2rem}
+.qc.good{background:#EBF4F6;border:1px solid #80B4BF}
+.qc.neutral{background:#F4EBC0;border:1px solid #C8B86A}
+.qc.bad{background:#FCEBEB;border:1px solid #F09595}
+.qn{font-size:22px;font-weight:700;line-height:1}
+.ql{font-size:8px;font-weight:700;text-transform:uppercase;margin-top:.15rem}
+.good .qn,.good .ql{color:#3A646D}
+.neutral .qn,.neutral .ql{color:#5A4A10}
+.bad .qn,.bad .ql{color:#A32D2D}
+
+/* Rundeinfo-header */
+.round-head{background:white;border:1px solid #BED4DB;border-left:4px solid #3A646D;border-radius:5px;padding:.65rem .85rem}
+.round-head-line{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem}
+.round-title-txt{font-size:12px;font-weight:700;color:#3A646D}
+.law-tag{font-size:9px;font-weight:700;background:#EBF4F6;border:1px solid #80B4BF;border-radius:3px;color:#3A646D;padding:2px 7px;white-space:nowrap}
+.round-module-txt{font-size:11px;color:#2C3E44;margin-top:.2rem;font-weight:600}
+
+/* Notes */
+.note-item{display:flex;gap:.5rem;background:#EBF4F6;border:1px solid #BED4DB;border-left:3px solid #3A646D;border-radius:0 4px 4px 0;padding:.6rem .75rem;font-size:12px;line-height:1.55;margin-bottom:.35rem}
+.debrief-box{background:#F3F4F7;border:1px solid #BED4DB;border-left:3px solid #80B4BF;border-radius:0 4px 4px 0;padding:.65rem .75rem;margin-top:.55rem}
+.debrief-box-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#3A646D;margin-bottom:.3rem}
+.debrief-box-q{font-size:12px;color:#2C3E44;line-height:1.6;font-weight:600}
+
+/* Scorecard */
+.score-table{width:100%;border-collapse:collapse;font-size:11px}
+.score-table th{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#3A646D;background:#F3F4F7;padding:.45rem .5rem;text-align:left;border-bottom:1px solid #BED4DB;font-weight:700}
+.score-table td{padding:.45rem .5rem;border-bottom:1px solid #EEF2F4}
+.score-table tr:last-child td{border-bottom:none}
+.score-pill{display:inline-block;border-radius:20px;padding:.15rem .5rem;font-size:10px;font-weight:700}
+.score-pill.good{background:#EBF4F6;color:#3A646D}
+.score-pill.neutral{background:#F4EBC0;color:#5A4A10}
+.score-pill.bad{background:#FCEBEB;color:#A32D2D}
+
+/* Debriefing */
+.debrief-card{background:#EBF4F6;border:1px solid #BED4DB;border-radius:5px;padding:.75rem;margin-bottom:.45rem}
+.debrief-card h3{font-size:11px;font-weight:700;color:#2C3E44;margin-bottom:.3rem}
+.debrief-card p{font-size:11px;line-height:1.6;color:#5A6A70}
+
+.waiting{text-align:center;color:#808B94;padding:2rem;font-size:12px}
+.view{display:none}
+.view.active{display:block;animation:fadeIn .2s ease}
+
+/* ── Responsivt ── */
+@media(max-width:1024px){
+  .two-col{grid-template-columns:1fr}
+  .fact-grid{grid-template-columns:repeat(2,1fr)}
+  .progression{grid-template-columns:repeat(4,1fr)}
+  .qr-setup{grid-template-columns:1fr;gap:.75rem}
+  .qr-wrap{text-align:center}
+  #qrcode{display:flex;justify-content:center}
+}
+@media(max-width:900px){
+  #live-screen{flex-direction:column}
+  .sidebar{width:100%;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid #BED4DB;overflow-y:visible}
+  .sb-section{flex:1;min-width:140px}
+  .danger-zone{margin-top:0;border-top:0;border-left:1px solid #EEF2F4;display:flex;align-items:flex-end;padding:.6rem .65rem}
+  .dash-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:600px){
+  .topbar{flex-wrap:wrap;gap:.4rem}
+  .timer-group{gap:.4rem}
+  .timer-val{font-size:15px}
+  .fact-grid{grid-template-columns:1fr 1fr}
+  .progression{grid-template-columns:repeat(2,1fr)}
+  .two-col{grid-template-columns:1fr}
+  .dash-grid{grid-template-columns:repeat(2,1fr)}
+  .intro-wrap h1{font-size:18px}
+  .bar-label{width:180px}
+  .overview-table{font-size:10px}
+}
 </style>
 </head>
 <body>
+<div class="app-shell">
+
+<!-- Topbar -->
 <div class="topbar">
   <div class="tb-left">
     <img class="tb-logo" src="https://www.eaaa.dk/assets/logo-da-small.svg" alt="EAAA" onerror="this.style.display='none'">
     <span class="tb-title">NIS2 Facilitatordashboard</span>
   </div>
   <div class="tb-right">
-    <div class="timer-box"><span class="timer-lbl">Tid</span><span id="timer-display">00:00</span></div>
-    <span class="live-badge"><span class="pulse"></span><span id="session-state">Venter</span></span>
-  </div>
-</div>
-<section id="intro-screen" class="screen active">
-  <div class="intro-card">
-    <h1>NIS2 Ledelsessimulation · DataBridge Solutions A/S</h1>
-    <div class="incident">
-      <div class="incident-head"><div><span>Aktiv hændelse · Mandag kl. 08.12</span><strong>Ransomware-angreb</strong></div><strong>KRITISK</strong></div>
-      <div class="fact-grid">
-        <div class="fact"><small>Virksomhed</small><b>DataBridge Solutions A/S</b><p>B2B digitale serviceløsninger</p></div>
-        <div class="fact"><small>Størrelse</small><b>52 ansatte</b><p>~68 mio. kr. omsætning</p></div>
-        <div class="fact"><small>NIS2-status</small><b>Vigtig enhed</b><p>§ 5 · Bilag 2</p></div>
-        <div class="fact"><small>IT-setup</small><b>Fuldt outsourcet</b><p>TechOps ApS</p></div>
+    <div class="timer-group">
+      <div class="timer-box">
+        <span class="timer-lbl">Total tid</span>
+        <span class="timer-val" id="timer-total">00:00</span>
+      </div>
+      <div class="timer-box">
+        <span class="timer-lbl">Runde tid</span>
+        <span class="timer-val" id="timer-round">00:00</span>
       </div>
     </div>
-    <div class="rules">
-      <div class="rule-box"><h2>Jeres rolle</h2><div class="rule"><span class="rule-n">I</span>I er DataBridges lederteam</div><div class="rule"><span class="rule-n">II</span>Diskuter i gruppen - et svar per terminal</div><div class="rule"><span class="rule-n">III</span>Der er ingen facit - men der er konsekvenser</div></div>
-      <div class="rule-box"><h2>Sådan virker det</h2><div class="rule"><span class="rule-n">1</span>Læs scenariet grundigt</div><div class="rule"><span class="rule-n">2</span>Vælg et svar og få feedback</div><div class="rule"><span class="rule-n">3</span>8 spørgsmål over ca. 20-25 minutter</div></div>
+    <div class="status-badge">
+      <span class="pulse-dot" id="status-dot"></span>
+      <span id="session-state">Venter</span>
     </div>
-    <div class="url-box"><small>Scan QR-koden eller skriv adressen</small><div id="qrcode" style="display:flex;justify-content:center;margin:.5rem 0"></div><div class="url">https://Funclausen.github.io/nis2-simulation/</div></div>
-    <div class="setup-row"><label for="expected-input">Antal grupper / terminaler:</label><input id="expected-input" type="number" min="1" max="100" value="15" onchange="setExpected(this.value)"><span class="muted" style="font-size:11px">Bruges til svarprocent undervejs</span></div>
-    <button class="start-btn" type="button" onclick="startSession()">Start simulationssessionen - timer starter nu</button>
-    <p class="note-small">Alle tidligere svar nulstilles automatisk ved start</p>
   </div>
+</div>
+
+<!-- ══ INTRO-SKÆRM ══ -->
+<section id="intro-screen" class="screen active">
+<div class="intro-wrap">
+
+  <div style="margin-bottom:1rem">
+    <span class="tag tag-teal" style="margin-bottom:.5rem;display:inline-block">NIS2 Ledelsessimulation · 8 runder · ca. 20–25 min.</span>
+    <h1>DataBridge Solutions A/S – Ransomware-angreb</h1>
+    <p class="lead">Deltagerne træder ind i lederteamet hos DataBridge og træffer reelle beslutninger under et igangværende ransomware-angreb. Hver beslutning har konsekvenser for drift, compliance, omdømme og ledelsesansvar.</p>
+  </div>
+
+  <!-- Scenariekort – lyst EAAA-tema -->
+  <div class="card">
+    <div class="card-title">Scenarie</div>
+    <div class="scenario-head">
+      <div class="scenario-icon">DB</div>
+      <div>
+        <div class="scenario-name">DataBridge Solutions A/S</div>
+        <div class="scenario-sub">Digitale B2B-serviceløsninger · Integrationsplatforme · Cloud-baserede forretningssystemer</div>
+        <span class="tag tag-teal">NIS2-vigtig enhed · § 5 · Bilag 2</span>
+        <span class="tag tag-warn" style="margin-left:.35rem">Aktiv hændelse · Mandag kl. 08.12</span>
+      </div>
+    </div>
+    <div class="fact-grid">
+      <div class="fact-item"><div class="fact-lbl">Virksomhed</div><div class="fact-val">DataBridge Solutions A/S</div><div class="fact-sub">B2B digitale serviceløsninger</div></div>
+      <div class="fact-item"><div class="fact-lbl">Størrelse</div><div class="fact-val">52 ansatte</div><div class="fact-sub">~68 mio. kr. omsætning</div></div>
+      <div class="fact-item"><div class="fact-lbl">NIS2-status</div><div class="fact-val">Vigtig enhed</div><div class="fact-sub">§ 5 · Bilag 2</div></div>
+      <div class="fact-item"><div class="fact-lbl">IT-setup</div><div class="fact-val">Fuldt outsourcet</div><div class="fact-sub">TechOps ApS → CloudHost GmbH</div></div>
+    </div>
+  </div>
+
+  <!-- Progression -->
+  <div class="card">
+    <div class="card-title">Simulationens progression – 8 beslutningssituationer</div>
+    <div class="progression">
+      <div class="prog-step"><div class="prog-n">R1</div><div class="prog-time">08.12</div><div class="prog-module">Opdagelse og første respons</div></div>
+      <div class="prog-step"><div class="prog-n">R2</div><div class="prog-time">08.20</div><div class="prog-module">ISMS og informationsaktiver</div></div>
+      <div class="prog-step"><div class="prog-n">R3</div><div class="prog-time">08.45</div><div class="prog-module">Krisestab og beredskab</div></div>
+      <div class="prog-step"><div class="prog-n">R4</div><div class="prog-time">09.20</div><div class="prog-module">Leverandørkæde&shy;sikkerhed</div></div>
+      <div class="prog-step"><div class="prog-n">R5</div><div class="prog-time">10.00</div><div class="prog-module">Underretnings&shy;pligter og frister</div></div>
+      <div class="prog-step"><div class="prog-n">R6</div><div class="prog-time">11.00</div><div class="prog-module">Ledelsesansvar og governance</div></div>
+      <div class="prog-step"><div class="prog-n">R7</div><div class="prog-time">11.30</div><div class="prog-module">Myndighedskontakt og tilsyn</div></div>
+      <div class="prog-step"><div class="prog-n">R8</div><div class="prog-time">Eftermiddag</div><div class="prog-module">Opfølgning og fremtidig compliance</div></div>
+    </div>
+  </div>
+
+  <!-- To kolonner: spilleregler + indikatorer -->
+  <div class="two-col">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">Spilleregler for deltagerne</div>
+      <div class="rule-list">
+        <div class="rule-item"><span class="rule-n">I</span><span>Gruppen er DataBridges lederteam</span></div>
+        <div class="rule-item"><span class="rule-n">II</span><span>Diskuter i gruppen – ét svar per terminal</span></div>
+        <div class="rule-item"><span class="rule-n">III</span><span>Der er ingen facit – men der er konsekvenser</span></div>
+        <div class="rule-item"><span class="rule-n">IV</span><span>3 min. til hvert spørgsmål, derefter auto-fremrykning</span></div>
+      </div>
+      <div style="margin-top:.75rem">
+        <div class="card-title">Nøglepersoner i scenariet</div>
+        <div id="key-persons" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.2rem"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">Indikatorer – hvad måler de?</div>
+      <table class="ind-table">
+        <thead><tr><th>Indikator</th><th>Måler</th><th>Ændres ved</th></tr></thead>
+        <tbody>
+          <tr><td><span class="ind-name">Drift</span></td><td>Evnen til at opretholde forretningskritiske systemer og kundeleverancer</td><td>Beslutninger om nedetid, prioritering og leverandørstyring</td></tr>
+          <tr><td><span class="ind-name">Compliance</span></td><td>Overholdelse af NIS2-forpligtelser og myndighedskrav</td><td>Underretningsfrister, dokumentation, tilsynssamarbejde</td></tr>
+          <tr><td><span class="ind-name">Omdømme</span></td><td>Ekstern troværdighed over for kunder, bestyrelse og myndigheder</td><td>Kommunikation, åbenhed og ledelsesadfærd</td></tr>
+          <tr><td><span class="ind-name">Ledelse</span></td><td>§ 7-forpligtelse: aktivt ledelsesejerskab og dokumentation</td><td>Direkte ledelsesinitiativ, godkendelse, tilsyn</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:.6rem;font-size:10px;color:#808B94;line-height:1.5">Scoren beregnes som vægtet gennemsnit: Drift 20% · Compliance 30% · Omdømme 20% · Ledelse 30%</div>
+    </div>
+  </div>
+
+  <!-- QR + setup -->
+  <div class="card">
+    <div class="card-title">Deltagerlink og sessionopsætning</div>
+    <div class="qr-setup">
+      <div class="qr-wrap">
+        <div class="qr-lbl">Scan eller skriv adressen</div>
+        <div id="qrcode"></div>
+        <div class="qr-url">Funclausen.github.io/nis2-simulation</div>
+      </div>
+      <div class="setup-area">
+        <div class="setup-row">
+          <label for="expected-input">Antal grupper / terminaler:</label>
+          <input id="expected-input" type="number" min="1" max="100" value="15" onchange="setExpected(this.value)">
+          <span style="font-size:11px;color:#808B94">Bruges til svarprocent</span>
+        </div>
+        <button class="start-btn" onclick="startSession()">Start simulationen – timer starter nu</button>
+        <p class="note-small">Alle tidligere svar fra Firebase nulstilles automatisk ved opstart</p>
+      </div>
+    </div>
+  </div>
+
+</div>
 </section>
+
+<!-- ══ LIVE-SKÆRM ══ -->
 <section id="live-screen" class="screen">
+
+  <!-- Sidebar -->
   <aside class="sidebar">
-    <div class="panel"><div class="panel-title">Svar modtaget</div><div class="stat-big" id="participant-count">0</div><div id="progress-text">Afventer svar...</div></div>
-    <div class="panel"><div class="panel-title">Fordeling denne runde</div><div class="qgrid"><div class="qc good"><div class="qn" id="count-good">0</div><div class="ql">Bedste</div></div><div class="qc neutral"><div class="qn" id="count-neutral">0</div><div class="ql">Neutral</div></div><div class="qc bad"><div class="qn" id="count-bad">0</div><div class="ql">Kritisk</div></div></div></div>
-    <div class="panel"><div class="panel-title">Runder</div><div class="round-grid" id="round-buttons"></div><div class="controls"><button class="ctrl" onclick="prevRound()">Forrige</button><button class="ctrl" onclick="nextRound()">Næste</button></div></div>
-    <div class="panel"><div class="panel-title">Session</div><div class="stack"><button class="ctrl secondary" onclick="showView('notes')">Facilitatornotes</button><button class="ctrl secondary" onclick="showView('scorecard')">Scorecard</button><button class="ctrl secondary" onclick="showView('debrief')">Debriefing</button><button class="ctrl secondary" onclick="showView('overview')">Samlet oversigt</button><button class="ctrl danger" onclick="resetSession()">Nulstil / intro</button></div></div>
+
+    <!-- Rundenavigation -->
+    <div class="sb-section">
+      <div class="sb-title">Runder</div>
+      <div class="round-grid" id="round-buttons"></div>
+      <div class="round-nav">
+        <button class="rnav-btn" onclick="prevRound()">← Forrige</button>
+        <button class="rnav-btn" onclick="nextRound()">Næste →</button>
+      </div>
+    </div>
+
+    <!-- Views -->
+    <div class="sb-section">
+      <div class="sb-title">Visning</div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <button class="nav-btn active" id="nav-dashboard" onclick="showView('dashboard')">
+          <div class="nav-icon"></div>Overblik
+        </button>
+        <button class="nav-btn" id="nav-chart" onclick="showView('chart')">
+          <div class="nav-icon"></div>Svarfordeling
+        </button>
+        <button class="nav-btn" id="nav-notes" onclick="showView('notes')">
+          <div class="nav-icon"></div>Facilitatornotes
+        </button>
+        <button class="nav-btn" id="nav-scorecard" onclick="showView('scorecard')">
+          <div class="nav-icon"></div>Scorecard
+        </button>
+        <button class="nav-btn" id="nav-debrief" onclick="showView('debrief')">
+          <div class="nav-icon"></div>Debriefing
+        </button>
+      </div>
+    </div>
+
+    <!-- Danger zone -->
+    <div class="danger-zone">
+      <button class="reset-btn" onclick="resetSession()">Nulstil session</button>
+    </div>
+
   </aside>
+
+  <!-- Indhold -->
   <main class="content">
-    <div class="round-head"><div class="round-line"><div class="round-title" id="current-round-label">Runde 1 af 8</div><span class="law" id="round-law"></span></div><div class="module" id="round-module"></div></div>
-    <div id="view-chart" class="view active"><div class="panel chart"><div class="panel-title">Svarfordeling - hvad valgte grupperne?</div><div id="bars"><div class="waiting">Afventer at deltagerne svarer...</div></div></div></div>
-    <div id="view-notes" class="view"><div class="panel"><div class="panel-title">Facilitatornotes - aktuel runde</div><div id="facilitator-notes"></div></div></div>
-    <div id="view-scorecard" class="view"><div class="panel"><div class="panel-title">Scorecard - alle grupper</div><div id="scorecard-content"></div></div></div>
-    <div id="view-debrief" class="view"><div class="panel"><div class="panel-title">Debriefing og afrunding</div><div id="debrief-content"></div></div></div>
-    <div id="view-overview" class="view"><div class="panel"><div class="panel-title">Samlet oversigt - alle runder</div><div id="overview-content"></div></div></div>
+
+    <!-- Rundeinfo-header – altid synlig -->
+    <div class="round-head">
+      <div class="round-head-line">
+        <div class="round-title-txt" id="current-round-label">Runde 1 af 8</div>
+        <span class="law-tag" id="round-law"></span>
+      </div>
+      <div class="round-module-txt" id="round-module"></div>
+    </div>
+
+    <!-- VIEW: Overblik / Dashboard -->
+    <div id="view-dashboard" class="view active">
+
+      <div class="panel">
+        <div class="panel-title">Sessionsstatus</div>
+        <div class="dash-grid">
+          <div class="dash-stat highlight">
+            <div class="dash-num" id="dash-answered">0</div>
+            <div class="dash-lbl">Har svaret</div>
+            <div class="dash-sub" id="dash-answered-sub">af 0 grupper</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-num" id="dash-waiting">0</div>
+            <div class="dash-lbl">Afventer svar</div>
+            <div class="dash-sub">denne runde</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-num" id="dash-round-num">1</div>
+            <div class="dash-lbl">Aktuel runde</div>
+            <div class="dash-sub" id="dash-round-of">af 8</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-num" id="dash-total-answers">0</div>
+            <div class="dash-lbl">Svar i alt</div>
+            <div class="dash-sub">alle runder</div>
+          </div>
+        </div>
+        <div class="prog-bar-wrap">
+          <div class="prog-bar-track"><div class="prog-bar-fill" id="dash-progress-bar" style="width:0%"></div></div>
+          <div class="prog-bar-lbl"><span id="dash-progress-lbl">0% svaret denne runde</span><span id="dash-progress-count"></span></div>
+        </div>
+        <div class="qgrid">
+          <div class="qc good"><div class="qn" id="count-good">0</div><div class="ql">Lav konsekvens</div></div>
+          <div class="qc neutral"><div class="qn" id="count-neutral">0</div><div class="ql">Moderat</div></div>
+          <div class="qc bad"><div class="qn" id="count-bad">0</div><div class="ql">Høj konsekvens</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Rundeoverblik – alle 8 runder</div>
+        <table class="overview-table" id="overview-table">
+          <thead><tr><th style="width:32px">R</th><th>Tidspunkt</th><th>Fase</th><th>Svar</th><th>Lav</th><th>Moderat</th><th>Høj</th></tr></thead>
+          <tbody id="overview-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VIEW: Svarfordeling -->
+    <div id="view-chart" class="view">
+      <div class="panel">
+        <div class="panel-title">Svarfordeling – hvad valgte grupperne?</div>
+        <div id="bars"><div class="waiting">Afventer at deltagerne svarer...</div></div>
+      </div>
+    </div>
+
+    <!-- VIEW: Facilitatornotes -->
+    <div id="view-notes" class="view">
+      <div class="panel">
+        <div class="panel-title">Facilitatornotes – aktuel runde</div>
+        <div id="facilitator-notes"></div>
+      </div>
+    </div>
+
+    <!-- VIEW: Scorecard -->
+    <div id="view-scorecard" class="view">
+      <div class="panel">
+        <div class="panel-title">Scorecard – alle grupper</div>
+        <div id="scorecard-content"></div>
+      </div>
+    </div>
+
+    <!-- VIEW: Debriefing -->
+    <div id="view-debrief" class="view">
+      <div class="panel">
+        <div class="panel-title">Debriefing og afrunding</div>
+        <div id="debrief-content"></div>
+      </div>
+    </div>
+
   </main>
 </section>
+
+</div><!-- .app-shell -->
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-database.js";
-const firebaseConfig={apiKey:"AIzaSyCf61thmI8AyQUkRldS2FmmZZFpa6yAXDc",authDomain:"nis2-simulation.firebaseapp.com",databaseURL:"https://nis2-simulation-default-rtdb.europe-west1.firebasedatabase.app",projectId:"nis2-simulation",storageBucket:"nis2-simulation.firebasestorage.app",messagingSenderId:"570342903290",appId:"1:570342903290:web:cbeb11ba80c8e941ece843"};
-const app=initializeApp(firebaseConfig);const db=getDatabase(app);
-let currentRound=0,currentSessionId=null,timerStart=null,timerInterval=null;window.rawAnswers={};window.allAnswers={};window.expectedParticipants=15;
+
+const firebaseConfig={
+  apiKey:"AIzaSyCf61thmI8AyQUkRldS2FmmZZFpa6yAXDc",
+  authDomain:"nis2-simulation.firebaseapp.com",
+  databaseURL:"https://nis2-simulation-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"nis2-simulation",
+  storageBucket:"nis2-simulation.firebasestorage.app",
+  messagingSenderId:"570342903290",
+  appId:"1:570342903290:web:cbeb11ba80c8e941ece843"
+};
+
+const app=initializeApp(firebaseConfig);
+const db=getDatabase(app);
+
+let currentRound=0, currentSessionId=null;
+let totalTimerStart=null, totalTimerInterval=null;
+let roundTimerStart=null, roundTimerInterval=null;
+window.rawAnswers={}; window.allAnswers={}; window.expectedParticipants=15;
+
 const ROUND_META=[
-{time:"Mandag kl. 08.12",module:"Fase 1 - Opdagelse og første respons",lawRef:"§ 7",notes:["Typisk fejl: Ledere afventer leverandøren og etablerer ingen intern struktur.","Hvem i jeres organisation har Mettes rolle - og er det aftalt på forhånd?","NIS2-pointe: § 7 kræver aktivt tilsyn og dokumentation fra minut et."],debrief:"Hvad siger fordelingen om jeres parathed til at tage ledelsesejerskab fra starten?"},
-{time:"Mandag kl. 08.20",module:"Fase 2 - ISMS og informationsaktiver",lawRef:"§ 6 stk. 1 nr. 1",notes:["Typisk fejl: 'Vi ved godt hvad der er vigtigt' - men ingen har skrevet det ned.","Hvad er jeres tre mest forretningskritiske systemer?","Aktivoversigt er ledelsens godkendelsesansvar."],debrief:"Hvad siger runden om værdien af at have lavet forarbejdet inden krisen?"},
-{time:"Mandag kl. 08.45",module:"Fase 1 - Krisestab og beredskab",lawRef:"§ 6 stk. 2 · § 7",notes:["IT kan ikke alene eje krisen - ledelsen skal godkende og overvåge.","Hvilke tre roller aktiverer I med det samme?","Ledelsesansvar kan ikke uddelegeres."],debrief:"Hvor mange overlod det til TechOps, og hvad fortæller det om beredskab?"},
-{time:"Mandag kl. 09.20",module:"Fase 3 - Leverandørkædesikkerhed",lawRef:"§ 6 stk. 1 nr. 4",notes:["Leverandørens leverandør er også jeres risiko.","Kender I underleverandører og deres sikkerhedsniveau?","Kontrakter skal have klare sikkerhedskrav."],debrief:"Hvem er det svageste led i jeres forsyningskæde - og ved I det?"},
-{time:"Mandag kl. 10.00",module:"Fase 4 - Underretningspligter og frister",lawRef:"§ 13 · GDPR art. 33",notes:["Man venter ofte på fuld klarhed, men loven kræver tidlig varsling.","Hvem har mandat til at sende NIS2-varsling?","NIS2 24 timer og GDPR 72 timer løber parallelt."],debrief:"Hvad gør 24-timersfristen organisatorisk svær?"},
-{time:"Mandag kl. 11.00",module:"Fase 6 - Ledelsesansvar og governance",lawRef:"§ 7 · Art. 20",notes:["Bestyrelsen informeres ofte for sent.","Hvornår ville I informere bestyrelsen?","Personligt direktøransvar ændrer risikobilledet."],debrief:"Er bestyrelsen klar til samtalen om personligt ansvar?"},
-{time:"Mandag kl. 11.30",module:"Fase 7 - Myndighedskontakt og tilsyn",lawRef:"§ 21 · § 22 · § 23",notes:["At minimere over for tilsyn kan tolkes som manglende samarbejde.","Hvem tager telefonen hvis Sikkerhedsstyrelsen ringer?","§ 23 kan give midlertidig suspension af direktøren."],debrief:"Hvad ændrer § 23 ved jeres tilgang til NIS2?"},
-{time:"Mandag eftermiddag",module:"Fase 8 - Opfølgning og fremtidig compliance",lawRef:"§ 6 · § 7 · § 13",notes:["Systemerne kører igen betyder ikke at hændelsen er afsluttet.","Hvad er jeres største NIS2-hul lige nu?","Endelig rapport og ISMS-opfølgning skal på plads."],debrief:"Hvad er det ene konkrete skridt I forpligter jer til inden for 14 dage?"}
+  {time:"Mandag kl. 08.12",module:"Fase 1 – Opdagelse og første respons",lawRef:"§ 7",
+   notes:["Typisk fejl: Ledere afventer leverandøren og etablerer ingen intern struktur.","Hvem i jeres organisation har Mettes rolle – og er det aftalt på forhånd?","NIS2-pointe: § 7 kræver aktivt tilsyn og dokumentation fra minut ét."],
+   debrief:"Hvad siger fordelingen om jeres parathed til at tage ledelsesejerskab fra starten?"},
+  {time:"Mandag kl. 08.20",module:"Fase 2 – ISMS og informationsaktiver",lawRef:"§ 6 stk. 1 nr. 1",
+   notes:["Typisk fejl: 'Vi ved godt hvad der er vigtigt' – men ingen har skrevet det ned.","Hvad er jeres tre mest forretningskritiske systemer?","Aktivoversigt er ledelsens godkendelsesansvar."],
+   debrief:"Hvad siger runden om værdien af at have lavet forarbejdet inden krisen?"},
+  {time:"Mandag kl. 08.45",module:"Fase 3 – Krisestab og beredskab",lawRef:"§ 6 stk. 2 · § 7",
+   notes:["IT kan ikke alene eje krisen – ledelsen skal godkende og overvåge.","Hvilke tre roller aktiverer I med det samme?","Ledelsesansvar kan ikke uddelegeres."],
+   debrief:"Hvor mange overlod det til TechOps, og hvad fortæller det om beredskab?"},
+  {time:"Mandag kl. 09.20",module:"Fase 4 – Leverandørkædesikkerhed",lawRef:"§ 6 stk. 1 nr. 4",
+   notes:["Leverandørens leverandør er også jeres risiko.","Kender I underleverandører og deres sikkerhedsniveau?","Kontrakter skal have klare sikkerhedskrav."],
+   debrief:"Hvem er det svageste led i jeres forsyningskæde – og ved I det?"},
+  {time:"Mandag kl. 10.00",module:"Fase 5 – Underretningspligter og frister",lawRef:"§ 13 · GDPR art. 33",
+   notes:["Man venter ofte på fuld klarhed, men loven kræver tidlig varsling.","Hvem har mandat til at sende NIS2-varsling?","NIS2 24 timer og GDPR 72 timer løber parallelt."],
+   debrief:"Hvad gør 24-timersfristen organisatorisk svær?"},
+  {time:"Mandag kl. 11.00",module:"Fase 6 – Ledelsesansvar og governance",lawRef:"§ 7 · Art. 20",
+   notes:["Bestyrelsen informeres ofte for sent.","Hvornår ville I informere bestyrelsen?","Personligt direktøransvar ændrer risikobilledet."],
+   debrief:"Er bestyrelsen klar til samtalen om personligt ansvar?"},
+  {time:"Mandag kl. 11.30",module:"Fase 7 – Myndighedskontakt og tilsyn",lawRef:"§ 21 · § 22 · § 23",
+   notes:["At minimere over for tilsyn kan tolkes som manglende samarbejde.","Hvem tager telefonen hvis Sikkerhedsstyrelsen ringer?","§ 23 kan give midlertidig suspension af direktøren."],
+   debrief:"Hvad ændrer § 23 ved jeres tilgang til NIS2?"},
+  {time:"Mandag eftermiddag",module:"Fase 8 – Opfølgning og fremtidig compliance",lawRef:"§ 6 · § 7 · § 13",
+   notes:["Systemerne kører igen betyder ikke at hændelsen er afsluttet.","Hvad er jeres største NIS2-hul lige nu?","Endelig rapport og ISMS-opfølgning skal på plads."],
+   debrief:"Hvad er det ene konkrete skridt I forpligter jer til inden for 14 dage?"}
 ];
+
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
-function filterAnswers(raw){if(!currentSessionId)return{};const out={};Object.entries(raw||{}).forEach(([round,answers])=>{const kept={};Object.entries(answers||{}).forEach(([id,ans])=>{if(ans&&(!ans.sessionId||ans.sessionId===currentSessionId))kept[id]=ans;});out[round]=kept;});return out;}
-onValue(ref(db,'session/id'),snap=>{currentSessionId=snap.val()||null;window.allAnswers=filterAnswers(window.rawAnswers);updateDisplay();});
-onValue(ref(db,'session/state'),snap=>{document.getElementById('session-state').textContent=snap.val()==='active'?'Live':'Venter';});
-onValue(ref(db,'answers'),snap=>{window.rawAnswers=snap.val()||{};window.allAnswers=filterAnswers(window.rawAnswers);updateDisplay();});
-window.setExpected=n=>{window.expectedParticipants=parseInt(n,10)||1;updateDisplay();};
-window.startSession=async()=>{const newSid='ses-'+Date.now();await remove(ref(db,'answers')).catch(()=>{});await set(ref(db,'session/resetSignal'),Date.now());await set(ref(db,'session/activeRound'),0);await set(ref(db,'session/id'),newSid);await set(ref(db,'session/state'),'active');currentSessionId=newSid;window.rawAnswers={};window.allAnswers={};currentRound=0;window.expectedParticipants=parseInt(document.getElementById('expected-input').value,10)||15;startTimer();showScreen('live');setRound(0);};
-window.resetSession=async()=>{if(!confirm('Nulstil alle svar og gå til intro?'))return;clearInterval(timerInterval);timerStart=null;document.getElementById('timer-display').textContent='00:00';await remove(ref(db,'answers')).catch(()=>{});await set(ref(db,'session/resetSignal'),Date.now());await set(ref(db,'session/activeRound'),0);await set(ref(db,'session/id'),null);await set(ref(db,'session/state'),'waiting');currentSessionId=null;currentRound=0;window.rawAnswers={};window.allAnswers={};showScreen('intro');updateDisplay();};
-function startTimer(){clearInterval(timerInterval);timerStart=Date.now();timerInterval=setInterval(()=>{const s=Math.floor((Date.now()-timerStart)/1000),m=Math.floor(s/60),sc=s%60;document.getElementById('timer-display').textContent=`${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;},1000);}
-function showScreen(name){document.getElementById('intro-screen').classList.toggle('active',name==='intro');document.getElementById('live-screen').classList.toggle('active',name==='live');}
-window.setRound=r=>{currentRound=Math.max(0,Math.min(ROUND_META.length-1,r));set(ref(db,'session/activeRound'),currentRound).catch(()=>{});showView('chart');updateDisplay();};
-window.prevRound=()=>setRound(currentRound-1);window.nextRound=()=>setRound(currentRound+1);
-window.showView=name=>{['chart','notes','scorecard','debrief','overview'].forEach(v=>document.getElementById('view-'+v).classList.toggle('active',v===name));if(name==='notes')renderNotes();if(name==='scorecard')renderScorecard();if(name==='debrief')renderDebrief();if(name==='overview')renderOverview();};
-function updateDisplay(){const meta=ROUND_META[currentRound];if(!document.getElementById('participant-count'))return;const answers=window.allAnswers[currentRound]||{};const entries=Object.values(answers);const total=entries.length;document.getElementById('participant-count').textContent=total;const exp=window.expectedParticipants||1,pct=Math.min(100,Math.round(total/exp*100));document.getElementById('progress-text').textContent=total?`${total} af ${exp} (${pct}%)`:'Afventer svar...';document.getElementById('current-round-label').textContent=`Runde ${currentRound+1} af ${ROUND_META.length} · ${meta.time}`;document.getElementById('round-module').textContent=meta.module;document.getElementById('round-law').textContent=meta.lawRef;const c={good:0,neutral:0,bad:0};const choiceCounts={};entries.forEach(e=>{c[e.quality]=(c[e.quality]||0)+1;const k=e.shortText||'Valg';choiceCounts[k]=(choiceCounts[k]||0)+1;});document.getElementById('count-good').textContent=c.good||0;document.getElementById('count-neutral').textContent=c.neutral||0;document.getElementById('count-bad').textContent=c.bad||0;renderBars(choiceCounts,total);document.querySelectorAll('.rbtn').forEach((b,i)=>{b.classList.toggle('active',i===currentRound);b.classList.toggle('answered',Object.keys(window.allAnswers[i]||{}).length>0);});const active=document.querySelector('.view.active')?.id;if(active==='view-notes')renderNotes();if(active==='view-scorecard')renderScorecard();if(active==='view-debrief')renderDebrief();if(active==='view-overview')renderOverview();}
-function renderBars(counts,total){const bars=document.getElementById('bars');if(!total){bars.innerHTML='<div class="waiting">Afventer svar...</div>';return;}const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);const max=sorted[0]?.[1]||1;bars.innerHTML=sorted.map(([label,count])=>{const p=Math.round(count/total*100),w=Math.round(count/max*100);return `<div class="bar-row"><div class="bar-label">${esc(label)}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%"></div></div><div class="bar-count">${count} <span class="muted">(${p}%)</span></div></div>`;}).join('');}
-function renderNotes(){const meta=ROUND_META[currentRound];document.getElementById('facilitator-notes').innerHTML=`<div class="notes-list">${meta.notes.map(n=>`<div class="note-item"><strong>•</strong><span>${esc(n)}</span></div>`).join('')}</div><div class="debrief-card" style="margin-top:.7rem"><h3>Debriefspørgsmål</h3><p>${esc(meta.debrief)}</p></div>`;}
-function buildRows(){const ids=new Set();Object.values(window.allAnswers||{}).forEach(r=>Object.keys(r||{}).forEach(id=>ids.add(id)));return [...ids].map(id=>{const row={id,good:0,neutral:0,bad:0,answered:0};for(let i=0;i<ROUND_META.length;i++){const a=(window.allAnswers[i]||{})[id];if(!a)continue;row.answered++;row[a.quality]=(row[a.quality]||0)+1;}row.score=row.answered?Math.round((row.good*100+row.neutral*55+row.bad*15)/row.answered):0;return row;}).sort((a,b)=>b.score-a.score);}
-function renderScorecard(){const rows=buildRows();const el=document.getElementById('scorecard-content');if(!rows.length){el.innerHTML='<div class="waiting">Scorecard vises når grupperne har svaret.</div>';return;}el.innerHTML=`<table class="score-table"><thead><tr><th>Gruppe</th><th>Runder</th><th>Bedste</th><th>Neutral</th><th>Kritisk</th><th>Score</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.id)}</td><td>${r.answered}/${ROUND_META.length}</td><td>${r.good}</td><td>${r.neutral}</td><td>${r.bad}</td><td><span class="score-pill ${r.score>=75?'good':r.score>=45?'neutral':'bad'}">${r.score}/100</span></td></tr>`).join('')}</tbody></table>`;}
-function renderDebrief(){const all=Object.values(window.allAnswers||{}).flatMap(r=>Object.values(r||{}));const total=all.length;const c={good:0,neutral:0,bad:0};all.forEach(a=>c[a.quality]=(c[a.quality]||0)+1);const ranked=ROUND_META.map((r,i)=>{const e=Object.values(window.allAnswers[i]||{});return {i,r,total:e.length,bad:e.filter(a=>a.quality==='bad').length};}).filter(x=>x.total).sort((a,b)=>b.bad/b.total-a.bad/a.total).slice(0,3);document.getElementById('debrief-content').innerHTML=`<div class="debrief-card"><h3>Gruppens samlede præstation · ${total} svar</h3><p>Bedste: ${c.good||0} · Neutral: ${c.neutral||0} · Kritisk: ${c.bad||0}. Brug fordelingen som spejl - ikke som dom.</p></div>${ranked.length?ranked.map(x=>`<div class="debrief-card"><h3>Runde ${x.i+1}: ${esc(x.r.module)}</h3><p>${x.bad} kritiske valg ud af ${x.total}. Spørg: ${esc(x.r.debrief)}</p></div>`).join(''):'<div class="waiting">Ingen svar endnu.</div>'}<div class="debrief-card"><h3>Afslutningsspørgsmål</h3><p>Hvad er det ene konkrete NIS2-skridt I forpligter jer til inden for de næste 14 dage?</p></div>`;}
-function renderOverview(){document.getElementById('overview-content').innerHTML=ROUND_META.map((r,i)=>{const e=Object.values(window.allAnswers[i]||{}),total=e.length;if(!total)return `<div class="note-item"><strong>R${i+1}</strong><span>${esc(r.time)} · ${esc(r.module)} - ingen svar endnu</span></div>`;const c={good:0,neutral:0,bad:0};e.forEach(a=>c[a.quality]=(c[a.quality]||0)+1);return `<div class="note-item"><strong>R${i+1}</strong><span>${esc(r.time)} · ${esc(r.module)} - ${total} svar · bedste ${c.good||0}, neutral ${c.neutral||0}, kritisk ${c.bad||0}</span></div>`;}).join('');}
-document.addEventListener('DOMContentLoaded',()=>{const buttons=document.getElementById('round-buttons');ROUND_META.forEach((r,i)=>{const b=document.createElement('button');b.className='rbtn';b.textContent='R'+(i+1);b.title=r.module;b.onclick=()=>setRound(i);buttons.appendChild(b);});if(window.QRCode){new QRCode(document.getElementById('qrcode'),{text:'https://Funclausen.github.io/nis2-simulation/',width:160,height:160,colorDark:'#3A646D',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}renderNotes();updateDisplay();});
+
+function fmtTime(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60),sc=s%60;return`${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;}
+
+function startTotalTimer(){
+  clearInterval(totalTimerInterval);
+  totalTimerStart=Date.now();
+  totalTimerInterval=setInterval(()=>{
+    document.getElementById('timer-total').textContent=fmtTime(Date.now()-totalTimerStart);
+  },1000);
+}
+
+function startRoundTimer(){
+  clearInterval(roundTimerInterval);
+  roundTimerStart=Date.now();
+  roundTimerInterval=setInterval(()=>{
+    document.getElementById('timer-round').textContent=fmtTime(Date.now()-roundTimerStart);
+  },1000);
+}
+
+function filterAnswers(raw){
+  if(!currentSessionId)return{};
+  const out={};
+  Object.entries(raw||{}).forEach(([round,answers])=>{
+    const kept={};
+    Object.entries(answers||{}).forEach(([id,ans])=>{
+      if(ans&&(!ans.sessionId||ans.sessionId===currentSessionId))kept[id]=ans;
+    });
+    out[round]=kept;
+  });
+  return out;
+}
+
+onValue(ref(db,'session/id'),snap=>{
+  currentSessionId=snap.val()||null;
+  window.allAnswers=filterAnswers(window.rawAnswers);
+  updateDisplay();
+});
+
+onValue(ref(db,'session/state'),snap=>{
+  const state=snap.val();
+  const dot=document.getElementById('status-dot');
+  const lbl=document.getElementById('session-state');
+  if(state==='active'){
+    dot.classList.add('live');
+    lbl.textContent='Live';
+  } else {
+    dot.classList.remove('live');
+    lbl.textContent='Venter';
+  }
+});
+
+onValue(ref(db,'answers'),snap=>{
+  window.rawAnswers=snap.val()||{};
+  window.allAnswers=filterAnswers(window.rawAnswers);
+  updateDisplay();
+});
+
+window.setExpected=window._setExpected=n=>{window.expectedParticipants=parseInt(n,10)||1;updateDisplay();};
+
+window._startSession=window.startSession=async()=>{
+  const newSid='ses-'+Date.now();
+  await remove(ref(db,'answers')).catch(()=>{});
+  await set(ref(db,'session/resetSignal'),Date.now());
+  await set(ref(db,'session/activeRound'),0);
+  await set(ref(db,'session/id'),newSid);
+  await set(ref(db,'session/state'),'active');
+  currentSessionId=newSid;
+  window.rawAnswers={}; window.allAnswers={};
+  currentRound=0;
+  window.expectedParticipants=parseInt(document.getElementById('expected-input').value,10)||15;
+  startTotalTimer();
+  startRoundTimer();
+  showScreen('live');
+  setRound(0);
+};
+
+window._resetSession=window.resetSession=async()=>{
+  if(!confirm('Nulstil alle svar og gå til opstartsskærmen?'))return;
+  clearInterval(totalTimerInterval);
+  clearInterval(roundTimerInterval);
+  document.getElementById('timer-total').textContent='00:00';
+  document.getElementById('timer-round').textContent='00:00';
+  await remove(ref(db,'answers')).catch(()=>{});
+  await set(ref(db,'session/resetSignal'),Date.now());
+  await set(ref(db,'session/activeRound'),0);
+  await set(ref(db,'session/id'),null);
+  await set(ref(db,'session/state'),'waiting');
+  currentSessionId=null; currentRound=0;
+  window.rawAnswers={}; window.allAnswers={};
+  showScreen('intro');
+  updateDisplay();
+};
+
+function showScreen(name){
+  document.getElementById('intro-screen').classList.toggle('active',name==='intro');
+  document.getElementById('live-screen').classList.toggle('active',name==='live');
+}
+
+window.setRound=r=>{
+  currentRound=Math.max(0,Math.min(ROUND_META.length-1,r));
+  set(ref(db,'session/activeRound'),currentRound).catch(()=>{});
+  startRoundTimer();
+  updateDisplay();
+};
+window.prevRound=()=>window.setRound(currentRound-1);
+window.nextRound=()=>window.setRound(currentRound+1);
+window._setRound=window.setRound;
+window._prevRound=window.prevRound;
+window._nextRound=window.nextRound;
+
+window.showView=name=>{
+  ['dashboard','chart','notes','scorecard','debrief'].forEach(v=>{
+    document.getElementById('view-'+v).classList.toggle('active',v===name);
+    document.getElementById('nav-'+v).classList.toggle('active',v===name);
+  });
+  if(name==='notes')renderNotes();
+  if(name==='scorecard')renderScorecard();
+  if(name==='debrief')renderDebrief();
+  if(name==='dashboard')renderOverviewTable();
+};
+window._showView=window.showView;
+
+// Signal til stub-funktionerne at Firebase og alle handlers er klar
+window._fbReady=true;
+
+function updateDisplay(){
+  const meta=ROUND_META[currentRound];
+  if(!document.getElementById('current-round-label'))return;
+
+  const answers=window.allAnswers[currentRound]||{};
+  const entries=Object.values(answers);
+  const total=entries.length;
+  const exp=window.expectedParticipants||1;
+  const waiting=Math.max(0,exp-total);
+  const pct=Math.min(100,Math.round(total/exp*100));
+
+  // Topbar runde-header
+  document.getElementById('current-round-label').textContent=`Runde ${currentRound+1} af ${ROUND_META.length} · ${meta.time}`;
+  document.getElementById('round-module').textContent=meta.module;
+  document.getElementById('round-law').textContent=meta.lawRef;
+
+  // Dashboard stats
+  document.getElementById('dash-answered').textContent=total;
+  document.getElementById('dash-answered-sub').textContent=`af ${exp} grupper`;
+  document.getElementById('dash-waiting').textContent=waiting;
+  document.getElementById('dash-round-num').textContent=currentRound+1;
+
+  // Total svar alle runder
+  let totalAll=0;
+  for(let i=0;i<ROUND_META.length;i++){totalAll+=Object.keys(window.allAnswers[i]||{}).length;}
+  document.getElementById('dash-total-answers').textContent=totalAll;
+
+  // Progressbar
+  document.getElementById('dash-progress-bar').style.width=pct+'%';
+  document.getElementById('dash-progress-lbl').textContent=pct+'% svaret denne runde';
+  document.getElementById('dash-progress-count').textContent=total?`${total} af ${exp}`:'';
+
+  // Fordeling
+  const c={good:0,neutral:0,bad:0};
+  const choiceCounts={};
+  entries.forEach(e=>{
+    c[e.quality]=(c[e.quality]||0)+1;
+    const k=e.shortText||'Valg';
+    choiceCounts[k]=(choiceCounts[k]||0)+1;
+  });
+  document.getElementById('count-good').textContent=c.good||0;
+  document.getElementById('count-neutral').textContent=c.neutral||0;
+  document.getElementById('count-bad').textContent=c.bad||0;
+
+  // Bars
+  renderBars(choiceCounts,total);
+
+  // Runde-knapper
+  document.querySelectorAll('.rbtn').forEach((b,i)=>{
+    b.classList.toggle('active',i===currentRound);
+    b.classList.toggle('answered',Object.keys(window.allAnswers[i]||{}).length>0);
+  });
+
+  // Opdater aktiv view
+  const activeView=document.querySelector('.view.active')?.id;
+  if(activeView==='view-dashboard')renderOverviewTable();
+  if(activeView==='view-notes')renderNotes();
+  if(activeView==='view-scorecard')renderScorecard();
+  if(activeView==='view-debrief')renderDebrief();
+}
+
+function renderBars(counts,total){
+  const bars=document.getElementById('bars');
+  if(!total){bars.innerHTML='<div class="waiting">Afventer at deltagerne svarer...</div>';return;}
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const max=sorted[0]?.[1]||1;
+  bars.innerHTML=sorted.map(([label,count])=>{
+    const p=Math.round(count/total*100);
+    const w=Math.round(count/max*100);
+    return `<div class="bar-row"><div class="bar-label">${esc(label)}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%"></div></div><div class="bar-count">${count} <span class="bar-pct">(${p}%)</span></div></div>`;
+  }).join('');
+}
+
+function renderOverviewTable(){
+  const tbody=document.getElementById('overview-tbody');
+  if(!tbody)return;
+  tbody.innerHTML=ROUND_META.map((r,i)=>{
+    const e=Object.values(window.allAnswers[i]||{});
+    const total=e.length;
+    const exp=window.expectedParticipants||1;
+    const isCurrent=i===currentRound;
+    const c={good:0,neutral:0,bad:0};
+    e.forEach(a=>c[a.quality]=(c[a.quality]||0)+1);
+    const countCell=total
+      ?`<span style="font-weight:700;color:#3A646D">${total}</span><span style="color:#808B94">/${exp}</span>`
+      :`<span style="color:#BED4DB">–</span>`;
+    return `<tr class="${isCurrent?'current-row':''}">
+      <td style="font-weight:700;color:#3A646D">R${i+1}</td>
+      <td style="color:#5A6A70;font-size:10px">${esc(r.time)}</td>
+      <td style="font-size:10px">${esc(r.module)}</td>
+      <td>${countCell}</td>
+      <td>${total?`<span class="ov-pill good">${c.good}</span>`:'<span class="ov-pill waiting">–</span>'}</td>
+      <td>${total?`<span class="ov-pill neutral">${c.neutral}</span>`:'<span class="ov-pill waiting">–</span>'}</td>
+      <td>${total?`<span class="ov-pill bad">${c.bad}</span>`:'<span class="ov-pill waiting">–</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderNotes(){
+  const meta=ROUND_META[currentRound];
+  document.getElementById('facilitator-notes').innerHTML=`
+    <div style="margin-bottom:.5rem">
+      ${meta.notes.map(n=>`<div class="note-item"><span style="color:#3A646D;font-weight:700;flex-shrink:0">→</span><span>${esc(n)}</span></div>`).join('')}
+    </div>
+    <div class="debrief-box">
+      <div class="debrief-box-title">Debriefspørgsmål til gruppen</div>
+      <div class="debrief-box-q">${esc(meta.debrief)}</div>
+    </div>`;
+}
+
+function buildRows(){
+  const ids=new Set();
+  Object.values(window.allAnswers||{}).forEach(r=>Object.keys(r||{}).forEach(id=>ids.add(id)));
+  return [...ids].map(id=>{
+    const row={id,good:0,neutral:0,bad:0,answered:0};
+    for(let i=0;i<ROUND_META.length;i++){
+      const a=(window.allAnswers[i]||{})[id];
+      if(!a)continue;
+      row.answered++;
+      row[a.quality]=(row[a.quality]||0)+1;
+    }
+    row.score=row.answered?Math.round((row.good*100+row.neutral*55+row.bad*15)/row.answered):0;
+    return row;
+  }).sort((a,b)=>b.score-a.score);
+}
+
+function renderScorecard(){
+  const rows=buildRows();
+  const el=document.getElementById('scorecard-content');
+  if(!rows.length){el.innerHTML='<div class="waiting">Scorecard vises når grupperne har svaret.</div>';return;}
+  el.innerHTML=`<table class="score-table">
+    <thead><tr><th>Gruppe</th><th>Runder</th><th>Lav konsekvens</th><th>Kritisk</th><th>Score</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr>
+      <td style="font-weight:600">${esc(r.id)}</td>
+      <td>${r.answered}/${ROUND_META.length}</td>
+      <td>${r.good}</td>
+      <td>${r.bad}</td>
+      <td><span class="score-pill ${r.score>=75?'good':r.score>=45?'neutral':'bad'}">${r.score}/100</span></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function renderDebrief(){
+  const all=Object.values(window.allAnswers||{}).flatMap(r=>Object.values(r||{}));
+  const total=all.length;
+  const c={good:0,neutral:0,bad:0};
+  all.forEach(a=>c[a.quality]=(c[a.quality]||0)+1);
+  const ranked=ROUND_META.map((r,i)=>{
+    const e=Object.values(window.allAnswers[i]||{});
+    return {i,r,total:e.length,bad:e.filter(a=>a.quality==='bad').length};
+  }).filter(x=>x.total).sort((a,b)=>b.bad/b.total-a.bad/a.total).slice(0,3);
+
+  document.getElementById('debrief-content').innerHTML=`
+    <div class="debrief-card">
+      <h3>Samlet præstation · ${total} svar</h3>
+      <p>Lav konsekvens: ${c.good||0} · Moderat: ${c.neutral||0} · Høj konsekvens: ${c.bad||0}. Brug fordelingen som spejl – ikke som dom.</p>
+    </div>
+    ${ranked.length?ranked.map(x=>`<div class="debrief-card">
+      <h3>Runde ${x.i+1}: ${esc(x.r.module)}</h3>
+      <p>${x.bad} høj-konsekvens valg ud af ${x.total}. Debriefspørgsmål: ${esc(x.r.debrief)}</p>
+    </div>`).join(''):'<div class="waiting">Ingen svar endnu.</div>'}
+    <div class="debrief-card" style="border-left:3px solid #80B4BF">
+      <h3>Afslutningsspørgsmål</h3>
+      <p>Hvad er det ene konkrete NIS2-skridt I forpligter jer til inden for de næste 14 dage?</p>
+    </div>`;
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  initPage();
+});
+if(document.readyState==='complete'||document.readyState==='interactive'){
+  initPage();
+}
+
+function initPage(){
+  if(window._pageInited)return;
+  window._pageInited=true;
+  // Byg rundeknapper
+  const buttons=document.getElementById('round-buttons');
+  if(buttons&&!buttons.hasChildNodes()){
+    ROUND_META.forEach((r,i)=>{
+      const b=document.createElement('button');
+      b.className='rbtn';
+      b.textContent='R'+(i+1);
+      b.title=r.module;
+      b.onclick=()=>setRound(i);
+      buttons.appendChild(b);
+    });
+  }
+  renderNotes();
+  updateDisplay();
+}
+// Kald direkte efter definition – sikrer at den altid kører i modul-scope
+initPage();
+</script>
+<script>
+// Knaphandlere – venter på at Firebase-modulet er klar før udførelse
+function waitAndCall(fn,args){
+  if(typeof window._fbReady!=='undefined'){
+    window[fn].apply(null,args||[]);
+  } else {
+    setTimeout(function(){waitAndCall(fn,args);},100);
+  }
+}
+window.startSession=function(){waitAndCall('_startSession');};
+window.resetSession=function(){waitAndCall('_resetSession');};
+window.setExpected=function(v){waitAndCall('_setExpected',[v]);};
+window.setRound=function(r){waitAndCall('_setRound',[r]);};
+window.prevRound=function(){waitAndCall('_prevRound');};
+window.nextRound=function(){waitAndCall('_nextRound');};
+window.showView=function(n){waitAndCall('_showView',[n]);};
+
+document.addEventListener('DOMContentLoaded',function(){
+  var persons=[['Mette Sørensen','CEO'],['Jakob Dahl','CFO'],['Line Kristensen','Head of Ops'],['Anders Møller','Juridisk rådgiver'],['Hanne Vestergaard','Bestyrelsesformand'],['TechOps ApS','IT-leverandør']];
+  var kp=document.getElementById('key-persons');
+  if(kp){kp.innerHTML=persons.map(function(p){return '<div style="background:#F3F4F7;border:1px solid #BED4DB;border-radius:4px;padding:.3rem .55rem;font-size:11px"><span style="font-weight:700;color:#2C3E44">'+p[0]+'</span> <span style="color:#808B94">'+p[1]+'</span></div>';}).join('');}
+  // QR
+  (function tryQR(n){
+    if(window.QRCode){
+      var el=document.getElementById('qrcode');
+      if(el&&!el.hasChildNodes()){new QRCode(el,{text:'https://Funclausen.github.io/nis2-simulation/',width:140,height:140,colorDark:'#3A646D',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
+    } else if(n>0){setTimeout(function(){tryQR(n-1);},150);}
+  })(20);
+});
 </script>
 </body>
 </html>
