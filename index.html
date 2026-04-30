@@ -263,18 +263,7 @@ h1{font-size:24px;font-weight:700;line-height:1.2;margin-bottom:.4rem;color:#2C3
   </div>
 </div>
 
-<div id="waiting-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;background:#F3F4F7">
-  <div style="background:#fff;border:1px solid #BED4DB;border-top:4px solid #80B4BF;border-radius:4px;max-width:420px;width:100%;padding:2rem;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06)">
-    <img src="https://www.eaaa.dk/assets/logo-da-small.svg" alt="EAAA" style="height:32px;margin-bottom:1.25rem" onerror="this.style.display='none'">
-    <div style="font-size:28px;margin-bottom:.75rem">⏳</div>
-    <h2 style="font-size:18px;font-weight:700;color:#2C3E44;margin-bottom:.5rem;font-family:'Montserrat',sans-serif">Venter på facilitatoren</h2>
-    <p style="font-size:13px;color:#5A6A70;line-height:1.65;margin-bottom:1.25rem;font-family:'Montserrat',sans-serif">Simulationen starter når facilitatoren er klar. Hold denne side åben – du vil automatisk blive sendt videre.</p>
-    <div style="display:flex;align-items:center;justify-content:center;gap:.5rem">
-      <span style="width:8px;height:8px;border-radius:50%;background:#80B4BF;display:inline-block;animation:pulse 1.5s infinite"></span>
-      <span style="font-size:12px;color:#808B94;font-family:'Montserrat',sans-serif;font-weight:600">Forbundet og klar</span>
-    </div>
-  </div>
-</div>
+<div id="waiting-screen" style="display:flex;flex-direction:column;min-height:100vh;padding:1.5rem 1rem 3rem;background:#F3F4F7"></div>
 <div id="app" style="display:none"></div>
 
 <script>
@@ -403,7 +392,7 @@ function getRisks(st,rounds){
 }
 function getGoods(st,rounds){
   const g=[];
-  if(st.markers.risikovurdering)g.push('Aktivoversigt udarbejdet tidligt – gav prioriteringsgrundlag og myndighedsdokumentation i runde 5, 6 og 10');
+  if(st.markers.risikovurdering)g.push('Aktivoversigt udarbejdet tidligt – gav prioriteringsgrundlag og myndighedsdokumentation i runde 5, 6 og 7');
   if(st.markers.beredskab)g.push('Krisestab med klare roller aktiveret – Mette, Jakob og Line koordinerede effektivt');
   if(st.markers.leverandor)g.push('Aktiv leverandørstyring med krav til TechOps og vurdering af CloudHosts sikkerhedsniveau');
   if(st.markers.dokumentation)g.push('Rettidig rapportering til NIS2-myndighed og Datatilsynet inden fristerne');
@@ -474,94 +463,42 @@ function kulisseSVG(size=140,color='#80B4BF',op=0.18){
 
 // ─── START SCREEN ────────────────────────────────────────────────────────
 function renderStart(){
-  return `
-  <span class="tag tag-teal" style="margin-bottom:.5rem;display:inline-block">NIS2 Ledelsessimulation · 8 runder</span>
-  <h1>Hvad koster det, hvis ledelsen fejler?</h1>
-  <p class="subh">Følg en reel hændelse i DataBridge Solutions A/S. Træf ledelsens beslutninger i realtid og se konsekvenserne live i kroner, bøderisiko og personligt ansvar.</p>
-
-  <div class="card" style="position:relative;overflow:hidden">
-    <div style="position:absolute;top:-30px;right:-30px;pointer-events:none">${kulisseSVG(140,'#80B4BF',.18)}</div>
-
-    <div style="display:flex;align-items:flex-start;gap:.85rem;margin-bottom:.9rem;padding-bottom:.85rem;border-bottom:1px solid #BED4DB">
-      <div style="width:44px;height:44px;border-radius:4px;background:#EBF4F6;border:1px solid #80B4BF;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#3A646D;flex-shrink:0">DB</div>
-      <div>
-        <div style="font-size:16px;font-weight:700;margin-bottom:.18rem;color:#2C3E44">DataBridge Solutions A/S</div>
-        <div style="font-size:12px;color:#5A6A70;line-height:1.4">Digitale B2B-serviceløsninger · Integrationsplatforme · Cloudbaserede forretningssystemer</div>
-        <div style="margin-top:.35rem"><span class="tag tag-teal">NIS2-vigtig enhed · § 5 · Bilag 2</span></div>
-      </div>
-    </div>
-
-    <div class="facts-grid">
-      ${[
-        ['Ansatte','52','Heraf 14 i IT og udvikling'],
-        ['Omsætning','~68 mio. kr.','Ca. 9,1 mio. euro'],
-        ['NIS2-grundlag','52 ansatte','Over 50-grænsen · vigtig enhed'],
-        ['IT-drift','Outsourcet','TechOps ApS'],
-        ['CISO','Outsourcet','Ingen intern IT-sikkerhed'],
-        ['Beredskabsplan','Ingen','Ikke udarbejdet eller testet']
-      ].map(([l,v,s])=>`<div class="fact"><div class="fact-label">${l}</div><div class="fact-value">${v}</div><div class="fact-sub">${s}</div></div>`).join('')}
-    </div>
-
-    <div class="section-label">Ledelse og nøglepersoner</div>
-    <div class="roles">
-      ${[
-        ['Mette Sørensen','CEO · øverste juridisk ansvarlig'],
-        ['Jakob Dahl','CFO · økonomi og forsikring'],
-        ['Line Kristensen','Head of Operations'],
-        ['Anders Møller (juridisk rådgiver)','Juridisk rådgiver (ekstern)'],
-        ['Hanne Vestergaard','Bestyrelsesformand'],
-        ['TechOps ApS → CloudHost GmbH','IT-leverandør og underleverandør']
-      ].map(([n,t])=>`<div class="role-chip"><div class="role-name">${n}</div><div class="role-title">${t}</div></div>`).join('')}
-    </div>
-
-    <div class="meta-grid">
-      ${[
-        ['Hændelsestype','Ransomware-angreb via underleverandør'],
-        ['Tidsramme','Mandag 08.12–eftermiddag (realtid)'],
-        ['Runder','11 beslutningssituationer · 8 faser'],
-        ['Lovgrundlag','NIS2 §§ 5–23 · GDPR art. 33']
-      ].map(([l,v])=>`<div class="meta-item"><strong>${l}</strong>${v}</div>`).join('')}
-    </div>
-  </div>
-
-  <div style="background:#F4EBC0;border:1px solid #C8B86A;border-left:4px solid #C8B86A;border-radius:4px;padding:.75rem 1rem;margin-bottom:1rem;font-size:12px;line-height:1.6;color:#5A4A10">
-    <strong style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem">Vigtig information</strong>
-    Dette er en pædagogisk simulation. Scenarierne er forsimplede og konklusionerne om rigtige og forkerte valg afspejler ikke nødvendigvis den juridiske virkelighed i en given situation. Hvad der er det rigtige ledelsesvalg afhænger altid af den konkrete kontekst og en individuel vurdering. Simuleringen udgør ikke juridisk rådgivning.
-  </div>
-  <button class="btn-primary" onclick="startSim()">Start simulationen →</button>`;
+  // Startskærm springes over – briefing vises på ventesskærmen
+  // Gå direkte til første runde
+  ST.screen='round';
+  return renderRound();
 }
 
 // ─── ROUND SCREEN ────────────────────────────────────────────────────────
 function renderRound(){
   const r=ROUNDS[ST.round];
-  const pct=Math.round((ST.round/TOTAL)*100);
+  const pct=Math.round(((ST.round+1)/TOTAL)*100);
   const chosen=ST.chosen.find(c=>c.round===ST.round);
-  const faseLabel=r.module;
   return `
   ${indGrid()}
   <div class="prog-wrap">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
       <div class="prog-label">${r.title} af ${TOTAL} · ${r.time}</div>
-      <!-- Timer -->
-      <div style="display:flex;align-items:center;gap:.35rem;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:.35rem;flex-shrink:0;opacity:0;transition:opacity 1.5s ease" id="timer-wrap">
         <svg id="timer-svg" width="64" height="64" viewBox="0 0 64 64">
           <circle class="timer-ring-bg" cx="32" cy="32" r="28"/>
           <circle class="timer-ring-fill" cx="32" cy="32" r="28"
             style="stroke:#3A646D;stroke-dasharray:175.9;stroke-dashoffset:0"/>
-          <text id="timer-center" x="32" y="30" class="timer-center" fill="#2C3E44">2:00</text>
+          <text id="timer-center" x="32" y="30" class="timer-center" fill="#2C3E44">3:00</text>
           <text id="timer-label" x="32" y="42" class="timer-label-txt">tilbage</text>
         </svg>
       </div>
     </div>
     <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
   </div>
+  <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem">
+    <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:#EBF4F6;color:#3A646D;border:1px solid #80B4BF;border-radius:20px;padding:3px 10px">💬 Diskuter i gruppen – ét svar per terminal</span>
+  </div>
   <div class="card" style="padding-top:0;overflow:hidden">
-    <!-- Fase-banner -->
     <div style="background:#3A646D;margin:-1.1rem -1.2rem 1rem -1.2rem;padding:.6rem 1.2rem .55rem;border-bottom:2px solid #80B4BF">
       <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.65);margin-bottom:.15rem">Fagområde</div>
       <div style="font-size:13px;font-weight:700;color:white;line-height:1.3">${r.module}</div>
     </div>
-    <!-- Tags -->
     <div class="badges">
       <span class="tag tag-teal">${r.time}</span>
       <span class="tag tag-law">${r.lawRef}</span>
@@ -572,11 +509,61 @@ function renderRound(){
     ${r.choices.map((c,i)=>{
       const isSel=chosen&&chosen.idx===i;
       let cls='';
-      if(isSel)cls='good-sel';
+      if(isSel) cls = c.quality==='good'?'good-sel':c.quality==='bad'?'bad-sel':'neutral-sel';
       else if(chosen)cls='dimmed';
       return `<button class="choice ${cls}" onclick="choose(${i})" ${chosen?'disabled':''}>${c.text}</button>`;
     }).join('')}
-    ${chosen?`<button class="btn-primary" style="margin-top:.85rem" onclick="nextRound()">Se konsekvenser →</button>`:''}
+    ${chosen?renderConsequenceInline(chosen):''}
+  </div>`;
+}
+
+function renderConsequenceInline(chosen){
+  const r=ROUNDS[ST.round];
+  const c=r.choices[chosen.idx];
+  const isNext=ST.round+1<TOTAL;
+  const nextR=isNext?ROUNDS[ST.round+1]:null;
+
+  // Konsekvens-måler: score 0-100 baseret på øk. impact og quality
+  const impactScore = c.quality==='good'?85:c.quality==='neutral'?50:15;
+  const meterColor = c.quality==='good'?'#3A646D':c.quality==='neutral'?'#C8B86A':'#A32D2D';
+  const meterLabel = c.quality==='good'?'Lav konsekvens':c.quality==='neutral'?'Moderat konsekvens':'Høj konsekvens';
+  const meterBg = c.quality==='good'?'#EBF4F6':c.quality==='neutral'?'#F4EBC0':'#FCEBEB';
+
+  const changes=[];
+  if(c.d!==0)changes.push({l:'Drift',v:c.d});
+  if(c.c!==0)changes.push({l:'Compliance',v:c.c});
+  if(c.o!==0)changes.push({l:'Omdømme',v:c.o});
+  if(c.l!==0)changes.push({l:'Ledelse',v:c.l});
+
+  return `
+  <div style="margin-top:.85rem;border-top:2px solid #BED4DB;padding-top:.85rem">
+
+    <!-- Konsekvens-måler -->
+    <div style="background:${meterBg};border:1px solid ${meterColor};border-radius:4px;padding:.75rem .9rem;margin-bottom:.65rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.45rem">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${meterColor}">Konsekvensgrad</div>
+        <div style="font-size:11px;font-weight:700;color:${meterColor}">${meterLabel}</div>
+      </div>
+      <div style="background:rgba(255,255,255,.5);border-radius:3px;height:8px;overflow:hidden;margin-bottom:.5rem">
+        <div style="width:${impactScore}%;height:100%;background:${meterColor};border-radius:3px;transition:width .6s ease"></div>
+      </div>
+      <div style="font-size:12.5px;line-height:1.65;color:#2C3E44">${c.consequence}</div>
+      ${c.econ_impact>0?`<div style="margin-top:.5rem;font-size:12px;font-weight:700;color:${meterColor}">Estimeret eksponering: ${dkk(c.econ_impact)}</div>`:''}
+      ${c.legal&&c.legal.length?`<div style="margin-top:.4rem;display:flex;flex-wrap:wrap;gap:.22rem">${c.legal.map(l=>`<span style="display:inline-block;font-size:10px;font-weight:600;background:#FCEBEB;color:#A32D2D;border-radius:3px;padding:2px 6px">⚠ ${l}</span>`).join('')}</div>`:''}
+    </div>
+
+    <!-- NIS2-indsigt -->
+    <div class="insight-box">
+      <strong>NIS2-indsigt · ${r.lawRef}</strong>${r.insight}
+    </div>
+
+    <!-- Indikatorændringer -->
+    ${changes.length?`<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.6rem">${changes.map(ch=>`<div style="background:#fff;border:1px solid ${ch.v>0?'#80B4BF':'#F09595'};border-radius:4px;padding:.4rem .75rem;text-align:center"><div style="font-size:10px;color:#808B94;font-weight:600;margin-bottom:.1rem">${ch.l}</div><div style="font-size:18px;font-weight:700;color:${ch.v>0?'#3A646D':'#A32D2D'}">${ch.v>0?'+':''}${ch.v}</div></div>`).join('')}</div>`:''}
+
+    <!-- Fortsæt -->
+    <button class="btn-primary" onclick="continueAfterSummary()" style="margin-top:.75rem">
+      ${isNext?`Fortsæt til ${nextR.title}: ${nextR.time} →`:'Se din samlede rapport →'}
+    </button>
   </div>`;
 }
 
@@ -595,7 +582,7 @@ function renderReport(){
 
   <div class="score-box">
     <div class="score-num">${score>0?'+'+score:score}</div>
-    <div class="score-sub">Samlet NIS2 ledelsesscore</div>
+    <div class="score-sub">NIS2 ledelsesscore · maks. muligt +12,7</div>
   </div>
 
   ${bad>=4?`<div class="warn-box">⚠ DataBridge traf ${bad} kritiske fejlvalg. En reel hændelse med disse beslutninger ville sandsynligvis resultere i politianmeldelse, bøder og potentielt midlertidig fratagelse af Mette Sørensens ledelsesfunktion (§ 23).</div>`:''}
@@ -629,14 +616,14 @@ function renderReport(){
     <div class="econ-row"><span>Samlet estimeret eksponering</span><span>${dkk(ST.econTotal)}</span></div>
   </div>`:''}
 
+  <button class="btn-primary" onclick="genPDF()" style="margin-bottom:.5rem">⬇ Hent jeres simulationsrapport som PDF</button>
+  <button class="btn-ghost" onclick="restart()">↺ Prøv igen med andre beslutninger</button>
+
   <div class="cta-box">
     <div style="position:absolute;bottom:-20px;right:-20px">${kulisseSVG(100,'#80B4BF',.25)}</div>
     <p>Forløbet giver ledelser et fælles sprog, konkrete ISMS-værktøjer og forståelse for det personlige ansvar, NIS2 medfører.</p>
     <a href="https://eaaa.dk/nis" target="_blank" class="cta-btn">Læs mere om forløbet på eaaa.dk/nis →</a>
   </div>
-
-  <button class="btn-secondary" onclick="genPDF()">⬇ Hent rapport som PDF</button>
-  <button class="btn-ghost" onclick="restart()">↺ Prøv igen med andre beslutninger</button>
 
   <div class="card-plain" style="margin-top:1.5rem">
     <div class="section-label" style="margin-top:0">Hvis du vil vide mere</div>
@@ -743,8 +730,18 @@ let _timerStart = null;
 
 function startRoundTimer(){
   clearInterval(_timerInterval);
-  _timerStart = Date.now();
-  _timerInterval = setInterval(tickTimer, 250);
+  _timerStart = null;
+  // Timer vises og starter først efter 3 sekunder – fade ind gradvist
+  const wrap = document.getElementById('timer-wrap');
+  if(wrap) wrap.style.opacity = '0';
+  setTimeout(()=>{
+    if(ST.screen !== 'round') return;
+    if(ST.chosen.find(c=>c.round===ST.round)) return;
+    _timerStart = Date.now();
+    _timerInterval = setInterval(tickTimer, 250);
+    const w = document.getElementById('timer-wrap');
+    if(w) w.style.opacity = '1';
+  }, 3000);
 }
 
 function stopRoundTimer(){
@@ -755,6 +752,7 @@ function stopRoundTimer(){
 function tickTimer(){
   if(ST.screen !== 'round') { stopRoundTimer(); return; }
   if(ST.chosen.find(c=>c.round===ST.round)) { stopRoundTimer(); return; }
+  if(!_timerStart) return;
 
   const elapsed = (Date.now() - _timerStart) / 1000;
   const remaining = TIMER_SECS - elapsed;
@@ -840,13 +838,16 @@ function choose(idx){
   if(c.markers)c.markers.forEach(m=>ST.markers[m]=true);
   ST.chosen.push({round:ST.round,idx});
   if(window.fbSend) window.fbSend(ST.round, c.quality, c.shortText||c.text.substring(0,60));
+  // Konsekvenser vises inline – bare re-render runde-skærmen
+  ST.screen='round';
   render();
 }
 function nextRound(){
-  if(ST.round+1>=TOTAL){ST.screen='report';render();return}
-  ST.screen='summary';render();
+  // Bevares til brug fra autoAdvance
+  continueAfterSummary();
 }
 function continueAfterSummary(){
+  if(ST.round+1>=TOTAL){ST.screen='report';render();return}
   ST.round++;
   ST.screen='round';
   render();
@@ -1200,11 +1201,112 @@ function genPDF(){
 }
 
 
+// ─── BRIEFING/VENTESSKÆRM ────────────────────────────────────────────────
+function renderWaiting(){
+  const w = document.getElementById('waiting-screen');
+  if(!w) return;
+  const faktaItems = [
+    ['Ansatte','52','Heraf 14 i IT og udvikling'],
+    ['Omsætning','~68 mio. kr.','Ca. 9,1 mio. euro'],
+    ['NIS2-grundlag','Vigtig enhed','Over 50-ansatte grænsen'],
+    ['IT-drift','Outsourcet','TechOps ApS'],
+    ['CISO','Outsourcet','Ingen intern IT-sikkerhed'],
+    ['Beredskabsplan','Ingen','Ikke udarbejdet eller testet']
+  ];
+  const roller = [
+    ['Mette Sørensen','CEO · øverste juridisk ansvarlig'],
+    ['Jakob Dahl','CFO · økonomi og forsikring'],
+    ['Line Kristensen','Head of Operations'],
+    ['Anders Møller','Juridisk rådgiver (ekstern)'],
+    ['Hanne Vestergaard','Bestyrelsesformand'],
+    ['TechOps ApS → CloudHost GmbH','IT-leverandør og underleverandør']
+  ];
+  const metaItems = [
+    ['Hændelsestype','Ransomware-angreb via underleverandør'],
+    ['Tidsramme','Mandag 08.12 – eftermiddag (realtid)'],
+    ['Runder','8 beslutningssituationer · 8 faser'],
+    ['Lovgrundlag','NIS2 §§ 5–23 · GDPR art. 33']
+  ];
+  const rolleRegler = [
+    ['I','I er DataBridges lederteam'],
+    ['II','Diskuter i gruppen – ét svar per terminal'],
+    ['III','Der er ingen facit – men der er konsekvenser']
+  ];
+  const hvordanRegler = [
+    ['1','Læs scenariet grundigt'],
+    ['2','Diskuter og vælg – se konsekvenserne med det samme'],
+    ['3','8 spørgsmål over ca. 20–25 minutter']
+  ];
+
+  w.innerHTML = `
+  <div style="max-width:720px;width:100%;margin:0 auto">
+
+    <div style="background:#3A646D;border-radius:5px;padding:.6rem 1rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <span style="width:8px;height:8px;border-radius:50%;background:#80B4BF;display:inline-block;animation:pulse 1.5s infinite"></span>
+        <span style="font-size:12px;font-weight:700;color:white;text-transform:uppercase;letter-spacing:.06em">Venter på facilitatoren</span>
+      </div>
+      <span style="font-size:11px;color:rgba(255,255,255,.65)">Siden opdaterer automatisk</span>
+    </div>
+
+    <span class="tag tag-teal" style="margin-bottom:.65rem;display:inline-block">NIS2 Ledelsessimulation · 8 runder</span>
+    <h1>Hvad koster det, hvis ledelsen fejler?</h1>
+    <p class="subh">Følg en reel hændelse i DataBridge Solutions A/S. Træf ledelsens beslutninger i realtid og se konsekvenserne live i kroner, bøderisiko og personligt ansvar.</p>
+
+    <div class="card" style="margin-bottom:.85rem">
+      <div style="display:flex;align-items:flex-start;gap:.85rem;margin-bottom:.9rem;padding-bottom:.85rem;border-bottom:1px solid #BED4DB">
+        <div style="width:44px;height:44px;border-radius:4px;background:#EBF4F6;border:1px solid #80B4BF;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#3A646D;flex-shrink:0">DB</div>
+        <div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:.18rem;color:#2C3E44">DataBridge Solutions A/S</div>
+          <div style="font-size:12px;color:#5A6A70;line-height:1.4">Digitale B2B-serviceløsninger · Integrationsplatforme · Cloudbaserede forretningssystemer</div>
+          <div style="margin-top:.35rem"><span class="tag tag-teal">NIS2-vigtig enhed · § 5 · Bilag 2</span></div>
+        </div>
+      </div>
+
+      <div class="facts-grid" style="margin-bottom:.9rem">
+        ${faktaItems.map(([l,v,s])=>`<div class="fact"><div class="fact-label">${l}</div><div class="fact-value">${v}</div><div class="fact-sub">${s}</div></div>`).join('')}
+      </div>
+
+      <div class="section-label">Ledelse og nøglepersoner</div>
+      <div class="roles" style="margin-bottom:.9rem">
+        ${roller.map(([n,t])=>`<div class="role-chip"><div class="role-name">${n}</div><div class="role-title">${t}</div></div>`).join('')}
+      </div>
+
+      <div class="meta-grid">
+        ${metaItems.map(([l,v])=>`<div class="meta-item"><strong>${l}</strong>${v}</div>`).join('')}
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.85rem">
+      <div class="card-plain">
+        <div class="section-label" style="margin-top:0">Jeres rolle</div>
+        ${rolleRegler.map(([n,t])=>`<div style="display:flex;align-items:flex-start;gap:.55rem;padding:.4rem 0;border-bottom:1px solid #DCE8EC;font-size:12px;line-height:1.5;color:#2C3E44"><span style="width:20px;height:20px;border-radius:50%;background:#3A646D;color:white;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;margin-top:1px">${n}</span><span>${t}</span></div>`).join('')}
+      </div>
+      <div class="card-plain">
+        <div class="section-label" style="margin-top:0">Sådan virker det</div>
+        ${hvordanRegler.map(([n,t])=>`<div style="display:flex;align-items:flex-start;gap:.55rem;padding:.4rem 0;border-bottom:1px solid #DCE8EC;font-size:12px;line-height:1.5;color:#2C3E44"><span style="width:20px;height:20px;border-radius:50%;background:#3A646D;color:white;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;margin-top:1px">${n}</span><span>${t}</span></div>`).join('')}
+      </div>
+    </div>
+
+    <div style="background:#F4EBC0;border:1px solid #C8B86A;border-left:4px solid #C8B86A;border-radius:4px;padding:.85rem 1rem;margin-bottom:1rem;font-size:12px;line-height:1.65;color:#5A4A10">
+      <strong style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem">Vigtig information</strong>
+      Dette er en pædagogisk simulation. Scenarierne er forsimplede og konklusionerne om rigtige og forkerte valg afspejler ikke nødvendigvis den juridiske virkelighed i en given situation. Hvad der er det rigtige ledelsesvalg afhænger altid af den konkrete kontekst og en individuel vurdering. Simuleringen udgør ikke juridisk rådgivning.
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.75rem;background:#fff;border:1px solid #BED4DB;border-radius:4px">
+      <span style="width:8px;height:8px;border-radius:50%;background:#80B4BF;display:inline-block;animation:pulse 1.5s infinite"></span>
+      <span style="font-size:12px;color:#808B94;font-weight:600">Forbundet og klar – simulationen starter automatisk når facilitatoren giver signal</span>
+    </div>
+
+  </div>`;
+}
+
 // ─── START ───────────────────────────────────────────────────────────────
 // Eksponér nøglefunktioner på window så module-scripts kan kalde dem
 // render() kaldes IKKE her – den startes kun når facilitator aktiverer sessionen via Firebase
 window.render = render;
 window.restart = restart;
+renderWaiting();
 </script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
