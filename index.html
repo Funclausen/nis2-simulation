@@ -524,7 +524,7 @@ function renderConsequenceInline(chosen){
   const nextR=isNext?ROUNDS[ST.round+1]:null;
 
   // Konsekvens-måler: score 0-100 baseret på øk. impact og quality
-  const impactScore = c.quality==='good'?85:c.quality==='neutral'?50:15;
+  const impactScore = c.quality==='good'?15:c.quality==='neutral'?55:90;
   const meterColor = c.quality==='good'?'#3A646D':c.quality==='neutral'?'#C8B86A':'#A32D2D';
   const meterLabel = c.quality==='good'?'Lav konsekvens':c.quality==='neutral'?'Moderat konsekvens':'Høj konsekvens';
   const meterBg = c.quality==='good'?'#EBF4F6':c.quality==='neutral'?'#F4EBC0':'#FCEBEB';
@@ -945,13 +945,13 @@ function genPDF(){
     if(k==='robust')return'Robust ledelse';
     if(k==='driftsfokus')return'Driftsfokuseret ledelse';
     if(k==='reaktiv')return'Reaktiv ledelse';
-    return'Saarbar ledelse';
+    return'S\u00e5rbar ledelse';
   }
   function profileDesc(k){
-    if(k==='robust')return'DataBridge tog tidligt ansvar og arbejdede struktureret. Aktivoversigten, krisestaben og den loebende dokumentation viste, at ledelsen levede op til NIS2 kravene.';
-    if(k==='driftsfokus')return'DataBridge fik fokus paa at holde driften i gang, men oversaa vasentlige NIS2-krav til ISMS, dokumentation og rapportering.';
-    if(k==='reaktiv')return'DataBridge reagerede for sent og overlod for meget til TechOps. Adskillige frister og paragraf 7-forpligtelser blev ikke overholdt.';
-    return'DataBridge manglede samlet retning, ISMS og ledelsesstyring. En reel haendelse ville sandsynligvis resultere i boeder og fratagelse af ledelsesfunktion.';
+    if(k==='robust')return'DataBridge tog tidligt ansvar og arbejdede struktureret. Aktivoversigten, krisestaben og den l\u00f8bende dokumentation viste, at ledelsen levede op til NIS2-kravene.';
+    if(k==='driftsfokus')return'DataBridge fik fokus p\u00e5 at holde driften i gang, men oversa\u00e5 v\u00e6sentlige NIS2-krav til ISMS, dokumentation og rapportering.';
+    if(k==='reaktiv')return'DataBridge reagerede for sent og overlod for meget til TechOps. Adskillige frister og \u00a7 7-forpligtelser blev ikke overholdt.';
+    return'DataBridge manglede samlet retning, ISMS og ledelsesstyring. En reel h\u00e6ndelse ville sandsynligvis resultere i b\u00f8der og fratagelse af ledelsesfunktion.';
   }
 
   // ════════════════════════════════════════════════════════
@@ -972,7 +972,7 @@ function genPDF(){
   y+=28;
 
   // Indikatorer
-  const iLabels=['Drift','Compliance','Omdoemme','Ledelse','Oek. risiko'];
+  const iLabels=['Drift','Compliance','Omd\u00f8mme','Ledelse','\u00d8k. risiko'];
   const iVals=[ST.drift,ST.compliance,ST.omdoemme,ST.ledelse,null];
   const iw=(CW-4*3)/5;
   iLabels.forEach((lbl,i)=>{
@@ -994,7 +994,7 @@ function genPDF(){
   if(badCount>=4){
     fr(M,y,CW,11,[252,235,235],2);sr(M,y,CW,11,[240,149,149]);
     sf('bold',7);sc([80,19,19]);
-    doc.text('Advarsel: '+badCount+' kritiske fejlvalg. Reel eksponering for boeder og potentiel suspension (ss. 23).',M+3,y+7.5);
+    doc.text('Advarsel: '+badCount+' kritiske fejlvalg. Reel eksponering for b\u00f8der og potentiel suspension (\u00a7 23).',M+3,y+7.5);
     y+=16;
   }
 
@@ -1047,7 +1047,7 @@ function genPDF(){
   newPage();
   y=24;
   sf('bold',14);sc(C.jade);doc.text('Beslutningsoversigt per fase',M,y);y+=5;
-  sf('normal',8.5);sc(C.muted);doc.text('Dine valg i simulationen – opdelt efter fagomraade',M,y);y+=9;
+  sf('normal',8.5);sc(C.muted);doc.text('Dine valg i simulationen \u2013 opdelt efter fagomr\u00e5de',M,y);y+=9;
 
   FASER.forEach(fase=>{
     // Find runder for denne fase som deltager har gennemfort
@@ -1115,12 +1115,12 @@ function genPDF(){
     y=checkY(y,18,'Side 2');
     fr(M,y,CW,16,[230,244,247],2);
     doc.setDrawColor(...C.teal);doc.setLineWidth(.8);doc.line(M,y,M,y+16);
-    sf('bold',6);sc([44,79,87]);doc.text('Laeringsmaalet for dette fagomraade',M+4,y+4.5);
+    sf('bold',6);sc([44,79,87]);doc.text('L\u00e6ringsm\u00e5let for dette fagomr\u00e5de',M+4,y+4.5);
     sf('normal',7);
     const lmLines=doc.splitTextToSize(fase.læringsmål,CW-10);
     doc.text(lmLines,M+4,y+9.5);
     sf('normal',6);sc(C.gray);
-    doc.text('Laes mere: '+fase.links,M+4,y+14);
+    doc.text('L\u00e6s mere: '+fase.links,M+4,y+14);
     y+=20;
   });
 
@@ -1134,7 +1134,7 @@ function genPDF(){
 
   // Økonomi-tabel
   if(ST.econTotal>0){
-    y=secLabel('Oekonomisk risikoeksponering per runde',y);
+    y=secLabel('\u00d8konomisk risikoeksponering per runde',y);
     fr(M,y,CW,8,C.butter,2);sr(M,y,CW,8,[200,184,106]);
     sf('bold',7);sc([90,74,16]);
     doc.text('Runde',M+3,y+5.2);doc.text('Tidspunkt',M+50,y+5.2);
@@ -1159,13 +1159,13 @@ function genPDF(){
   }
 
   // Faglige ressourcer
-  y=secLabel('Faglige ressourcer og videre laering',y);
+  y=secLabel('Faglige ressourcer og videre l\u00e6ring',y);
   const ressourcer=[
     {navn:'Sikkerhedsstyrelsen – NIS2',url:'sik.dk/erhverv/nis2-direktivet',desc:'Officiel vejledning, tilsynsinfo og NIS2-lovtekst'},
     {navn:'SikkerDigital.dk',url:'sikkerdigital.dk/nis2',desc:'Praktisk ISMS-vejledning og tjeklister til virksomheder'},
     {navn:'Datatilsynet',url:'datatilsynet.dk',desc:'GDPR-vejledning og anmeldelse af brud'},
-    {navn:'Retsinformation.dk',url:'retsinformation.dk',desc:'Den danske NIS2-lovtekst og bekeendtgoerelser'},
-    {navn:'EAAA NIS2 Compliance-forloeb',url:'eaaa.dk/nis',desc:'Forloeb der giver ledelser konkrete NIS2-kompetencer'},
+    {navn:'Retsinformation.dk',url:'retsinformation.dk',desc:'Den danske NIS2-lovtekst og bekendtg\u00f8relser'},
+    {navn:'EAAA NIS2 Compliance-forl\u00f8b',url:'eaaa.dk/nis',desc:'Forl\u00f8b der giver ledelser konkrete NIS2-kompetencer'},
   ];
   ressourcer.forEach(r=>{
     y=checkY(y,10,'Side 3');
@@ -1181,9 +1181,9 @@ function genPDF(){
   // CTA
   y=checkY(y,30,'Side 3');
   fr(M,y,CW,28,C.jade,4);fr(M,y,CW,2,C.teal);
-  sf('bold',11);sc(C.white);doc.text('NIS2 Compliance-forloeb – eaaa.dk/nis',M+6,y+9);
+  sf('bold',11);sc(C.white);doc.text('NIS2 Compliance-forl\u00f8b \u2013 eaaa.dk/nis',M+6,y+9);
   sf('normal',8);doc.setTextColor(255,255,255);
-  const ctaL=doc.splitTextToSize('Forlobet giver ledelser et faelles sprog, konkrete ISMS-vaerktojer og forstaelse for det personlige ansvar, NIS2 medfoerer.',CW-12);
+  const ctaL=doc.splitTextToSize('Forl\u00f8bet giver ledelser et f\u00e6lles sprog, konkrete ISMS-v\u00e6rkt\u00f8jer og forst\u00e5else for det personlige ansvar, NIS2 medf\u00f8rer.',CW-12);
   doc.text(ctaL,M+6,y+16);
 
   // Opdater alle footers med korrekt sidetal
