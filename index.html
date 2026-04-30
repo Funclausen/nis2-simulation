@@ -1235,8 +1235,33 @@ setTimeout(() => {
 
 // Hent og gem aktivt session-ID fra Firebase
 let currentSessionId = null;
+let currentState = null;
+
+function evaluateSession() {
+  const waiting = document.getElementById('waiting-screen');
+  const app = document.getElementById('app');
+  if(!waiting || !app) return;
+
+  // Tjek om session-ID er frisk (startet inden for 8 timer)
+  const ts = currentSessionId ? parseInt(currentSessionId.replace('ses-','')) : 0;
+  const sessionFresh = ts && (Date.now() - ts) < 8 * 60 * 60 * 1000;
+
+  if(currentState === 'active' && sessionFresh) {
+    waiting.style.display = 'none';
+    app.style.display = 'block';
+    app.className = 'outer';
+    if(typeof window.render === 'function' && (!window.ST || window.ST.screen === 'start')) {
+      window.render();
+    }
+  } else {
+    waiting.style.display = 'flex';
+    app.style.display = 'none';
+  }
+}
+
 onValue(ref(db, 'session/id'), snap => {
   currentSessionId = snap.val() || null;
+  evaluateSession();
 });
 
 // Send svar til Firebase - kaldes fra choose()
@@ -1249,24 +1274,8 @@ window.fbSend = function(roundIdx, quality, shortText) {
 
 // Lyt på session/state – vis ventesskærm indtil facilitator starter
 onValue(ref(db, 'session/state'), snap => {
-  const state = snap.val();
-  const waiting = document.getElementById('waiting-screen');
-  const app = document.getElementById('app');
-  if(!waiting || !app) return;
-  if(state === 'active') {
-    // Session er startet af facilitator
-    waiting.style.display = 'none';
-    app.style.display = 'block';
-    app.className = 'outer';
-    // Render kun hvis simulation ikke allerede er i gang
-    if(typeof window.render === 'function' && (!window.ST || window.ST.screen === 'start')) {
-      window.render();
-    }
-  } else {
-    // Ingen aktiv session – vis ventesskærm
-    waiting.style.display = 'flex';
-    app.style.display = 'none';
-  }
+  currentState = snap.val();
+  evaluateSession();
 });
 
 // Lyt på reset-signal fra facilitator
