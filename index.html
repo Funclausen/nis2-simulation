@@ -1293,57 +1293,36 @@ setTimeout(() => {
   if(el) el.textContent = '● ' + SID;
 }, 500);
 
-// Vent på at BEGGE værdier er modtaget inden vi evaluerer
-let _stateReceived = false;
-let _idReceived = false;
-let _currentState = null;
-let _currentSessionId = null;
-
-function evaluateSession() {
-  // Vent til begge listeners har svaret
-  if(!_stateReceived || !_idReceived) return;
-
+// Stol 100% på session/state fra facilitator
+// 'active'  → vis simulation
+// alt andet → vis ventesskærm
+onValue(ref(db, 'session/state'), snap => {
+  const state = snap.val();
   const waiting = document.getElementById('waiting-screen');
-  const appEl = document.getElementById('app');
+  const appEl   = document.getElementById('app');
   if(!waiting || !appEl) return;
 
-  // Tjek om session-ID er frisk (startet inden for 8 timer)
-  const ts = _currentSessionId ? parseInt(_currentSessionId.replace('ses-','')) : 0;
-  const sessionFresh = ts > 0 && (Date.now() - ts) < 8 * 60 * 60 * 1000;
-
-  if(_currentState === 'active' && sessionFresh) {
+  if(state === 'active') {
     waiting.style.display = 'none';
-    appEl.style.display = 'block';
-    appEl.className = 'outer';
+    appEl.style.display   = 'block';
+    appEl.className       = 'outer';
     if(typeof render === 'function' && (!window.ST || window.ST.screen === 'start')) {
       render();
     }
   } else {
-    // Vis ventesskærm – ingen aktiv eller frisk session
     waiting.style.display = 'flex';
-    appEl.style.display = 'none';
+    appEl.style.display   = 'none';
   }
-}
+});
 
+// Send svar til Firebase
 window.fbSend = function(roundIdx, quality, shortText) {
   set(ref(db, 'answers/' + roundIdx + '/' + SID), {
-    quality, shortText, ts: Date.now(),
-    sessionId: _currentSessionId
-  }).catch(e => console.warn('Firebase send fejl:', e));
+    quality, shortText, ts: Date.now()
+  }).catch(e => console.warn('Firebase:', e));
 };
 
-onValue(ref(db, 'session/id'), snap => {
-  _currentSessionId = snap.val() || null;
-  _idReceived = true;
-  evaluateSession();
-});
-
-onValue(ref(db, 'session/state'), snap => {
-  _currentState = snap.val();
-  _stateReceived = true;
-  evaluateSession();
-});
-
+// Reset-signal fra facilitator
 onValue(ref(db, 'session/resetSignal'), snap => {
   const v = snap.val();
   if(v && window._lastReset && v > window._lastReset) {

@@ -353,8 +353,9 @@ button,input{font:inherit}
           <input id="expected-input" type="number" min="1" max="100" value="15" onchange="setExpected(this.value)">
           <span style="font-size:11px;color:#808B94">Bruges til svarprocent</span>
         </div>
-        <button class="start-btn" onclick="startSession()">Start simulationen – timer starter nu</button>
-        <p class="note-small">Alle tidligere svar fra Firebase nulstilles automatisk ved opstart</p>
+        <button class="start-btn" onclick="startSession()">▶ Start simulationen – timer starter nu</button>
+        <button class="start-btn" onclick="endSession()" style="background:#fff;color:#A32D2D;border:1px solid #F09595;margin-top:.5rem">⏹ Afslut aktiv session – send deltagere til ventesskærm</button>
+        <p class="note-small">Alle tidligere svar nulstilles automatisk ved opstart · Afslut sender deltagere tilbage til ventesskærmen</p>
       </div>
     </div>
   </div>
@@ -402,7 +403,7 @@ button,input{font:inherit}
 
     <!-- Danger zone -->
     <div class="danger-zone">
-      <button class="reset-btn" onclick="resetSession()">Nulstil session</button>
+      <button class="reset-btn" onclick="resetSession()">↺ Nulstil og start forfra</button>
     </div>
 
   </aside>
@@ -622,6 +623,14 @@ window._startSession=window.startSession=async()=>{
   startTotalTimer();
   showScreen('live');
   setRound(0);
+};
+
+window._endSession=window.endSession=async()=>{
+  await set(ref(db,'session/state'),'waiting').catch(()=>{});
+  const dot=document.getElementById('status-dot');
+  const lbl=document.getElementById('session-state');
+  if(dot) dot.classList.remove('live');
+  if(lbl) lbl.textContent='Venter';
 };
 
 window._resetSession=window.resetSession=async()=>{
@@ -879,6 +888,7 @@ function waitAndCall(fn,args,tries){
   }
 }
 window.startSession=function(){waitAndCall('_startSession');};
+window.endSession=function(){waitAndCall('_endSession');};
 window.resetSession=function(){waitAndCall('_resetSession');};
 window.setExpected=function(v){waitAndCall('_setExpected',[v]);};
 window.setRound=function(r){waitAndCall('_setRound',[r]);};
