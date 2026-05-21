@@ -1205,6 +1205,8 @@ const db = getDatabase(app);
 const SID = sessionStorage.getItem('nis2_sid') || 'dx' + Math.random().toString(36).substr(2,5);
 sessionStorage.setItem('nis2_sid', SID);
 
+let currentSessionId = null; // Opdateres fra Firebase session/id
+
 setTimeout(() => {
   const el = document.getElementById('sid-indicator');
   if(el) el.textContent = '● ' + SID;
@@ -1213,6 +1215,12 @@ setTimeout(() => {
 // Stol 100% på session/state fra facilitator
 // 'active'  → vis simulation
 // alt andet → vis ventesskærm
+
+// Hent session/id så det kan sendes med svar
+onValue(ref(db, 'session/id'), snap => {
+  currentSessionId = snap.val() || null;
+});
+
 onValue(ref(db, 'session/state'), snap => {
   const state = snap.val();
   const waiting = document.getElementById('waiting-screen');
@@ -1234,11 +1242,16 @@ onValue(ref(db, 'session/state'), snap => {
 
 // Send svar til Firebase
 window.fbSend = function(roundIdx, quality, shortText) {
-  const teamName = window._teamName || SID;
-  set(ref(db, 'answers/' + roundIdx + '/' + SID), {
-    quality, shortText, ts: Date.now(),
-    teamName: teamName
-  }).catch(e => console.warn('Firebase:', e));
+  const teamName = (window._teamName && window._teamName.trim()) ? window._teamName.trim() : null;
+  const payload = {
+    quality,
+    shortText,
+    ts: Date.now(),
+    sessionId: currentSessionId
+  };
+  if(teamName) payload.teamName = teamName;
+  set(ref(db, 'answers/' + roundIdx + '/' + SID), payload)
+    .catch(e => console.warn('Firebase:', e));
 };
 
 // Reset-signal fra facilitator

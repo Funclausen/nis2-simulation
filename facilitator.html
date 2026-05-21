@@ -793,12 +793,18 @@ function buildRows(){
   const ids=new Set();
   Object.values(window.allAnswers||{}).forEach(r=>Object.keys(r||{}).forEach(id=>ids.add(id)));
   return [...ids].map(id=>{
-    // Brug teamnavn hvis tilgængeligt
-    let displayName = id;
+    // Find teamnavn i alle runder for denne gruppe
+    let displayName = null;
     for(let i=0;i<ROUND_META.length;i++){
       const a=(window.allAnswers[i]||{})[id];
-      if(a&&a.teamName){ displayName=a.teamName; break; }
+      if(a && a.teamName && a.teamName.trim()){
+        displayName = a.teamName.trim();
+        break;
+      }
     }
+    // Fallback: vis kortere version af session-ID
+    if(!displayName) displayName = id.startsWith('dx') ? id.substring(0,6) : id;
+
     const row={id, displayName, good:0,neutral:0,bad:0,answered:0};
     for(let i=0;i<ROUND_META.length;i++){
       const a=(window.allAnswers[i]||{})[id];
