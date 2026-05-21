@@ -251,16 +251,10 @@ button,input{font:inherit}
     <span class="tb-title">NIS2 Facilitatordashboard</span>
   </div>
   <div class="tb-right">
-    <div class="timer-group">
-      <div class="timer-box">
-        <span class="timer-lbl">Total tid</span>
-        <span class="timer-val" id="timer-total">00:00</span>
+    <div class="timer-box">
+        <span class="timer-lbl">Session tid</span>
+        <span class="timer-val" id="timer-total" style="transition:color .5s">00:00</span>
       </div>
-      <div class="timer-box">
-        <span class="timer-lbl">Runde tid</span>
-        <span class="timer-val" id="timer-round">00:00</span>
-      </div>
-    </div>
     <div class="status-badge">
       <span class="pulse-dot" id="status-dot"></span>
       <span id="session-state">Venter</span>
@@ -528,7 +522,6 @@ const db=getDatabase(app);
 
 let currentRound=0, currentSessionId=null;
 let totalTimerStart=null, totalTimerInterval=null;
-let roundTimerStart=null, roundTimerInterval=null;
 window.rawAnswers={}; window.allAnswers={}; window.expectedParticipants=15;
 
 const ROUND_META=[
@@ -566,15 +559,12 @@ function startTotalTimer(){
   clearInterval(totalTimerInterval);
   totalTimerStart=Date.now();
   totalTimerInterval=setInterval(()=>{
-    document.getElementById('timer-total').textContent=fmtTime(Date.now()-totalTimerStart);
-  },1000);
-}
-
-function startRoundTimer(){
-  clearInterval(roundTimerInterval);
-  roundTimerStart=Date.now();
-  roundTimerInterval=setInterval(()=>{
-    document.getElementById('timer-round').textContent=fmtTime(Date.now()-roundTimerStart);
+    const el=document.getElementById('timer-total');
+    if(!el) return;
+    const s=Math.floor((Date.now()-totalTimerStart)/1000);
+    const m=Math.floor(s/60);
+    el.textContent=fmtTime(Date.now()-totalTimerStart);
+    el.style.color = m>=28?'#FF9090':m>=22?'#F4EBC0':'white';
   },1000);
 }
 
@@ -630,7 +620,6 @@ window._startSession=window.startSession=async()=>{
   currentRound=0;
   window.expectedParticipants=parseInt(document.getElementById('expected-input').value,10)||15;
   startTotalTimer();
-  startRoundTimer();
   showScreen('live');
   setRound(0);
 };
@@ -638,9 +627,7 @@ window._startSession=window.startSession=async()=>{
 window._resetSession=window.resetSession=async()=>{
   if(!confirm('Nulstil alle svar og gå til opstartsskærmen?'))return;
   clearInterval(totalTimerInterval);
-  clearInterval(roundTimerInterval);
   document.getElementById('timer-total').textContent='00:00';
-  document.getElementById('timer-round').textContent='00:00';
   await remove(ref(db,'answers')).catch(()=>{});
   await set(ref(db,'session/resetSignal'),Date.now());
   await set(ref(db,'session/activeRound'),0);
@@ -660,7 +647,6 @@ function showScreen(name){
 window.setRound=r=>{
   currentRound=Math.max(0,Math.min(ROUND_META.length-1,r));
   set(ref(db,'session/activeRound'),currentRound).catch(()=>{});
-  startRoundTimer();
   updateDisplay();
 };
 window.prevRound=()=>window.setRound(currentRound-1);
@@ -881,11 +867,15 @@ initPage();
 </script>
 <script>
 // Knaphandlere – venter på at Firebase-modulet er klar før udførelse
-function waitAndCall(fn,args){
+function waitAndCall(fn,args,tries){
+  tries=tries||0;
   if(typeof window._fbReady!=='undefined'){
     window[fn].apply(null,args||[]);
+  } else if(tries>80){
+    var btn=document.querySelector('.start-btn');
+    if(btn){btn.textContent='⚠ Firebase ikke klar – tjek regler i Firebase Console';btn.style.background='#A32D2D';}
   } else {
-    setTimeout(function(){waitAndCall(fn,args);},100);
+    setTimeout(function(){waitAndCall(fn,args,tries+1);},100);
   }
 }
 window.startSession=function(){waitAndCall('_startSession');};
@@ -897,7 +887,7 @@ window.nextRound=function(){waitAndCall('_nextRound');};
 window.showView=function(n){waitAndCall('_showView',[n]);};
 
 document.addEventListener('DOMContentLoaded',function(){
-  var persons=[['Mette Sørensen','CEO'],['Jakob Dahl','CFO'],['Line Kristensen','Head of Ops'],['Anders Møller','Juridisk rådgiver'],['Hanne Vestergaard','Bestyrelsesformand'],['TechOps ApS','IT-leverandør']];
+  var persons=[['Mette Sørensen','CEO'],['Jakob Dahl','CFO'],['Line Kristensen','Head of Operations'],['Anders Møller','Juridisk rådgiver (ekstern)'],['Hanne Vestergaard','Bestyrelsesformand'],['TechOps ApS','IT-leverandør']];
   var kp=document.getElementById('key-persons');
   if(kp){kp.innerHTML=persons.map(function(p){return '<div style="background:#F3F4F7;border:1px solid #BED4DB;border-radius:4px;padding:.3rem .55rem;font-size:11px"><span style="font-weight:700;color:#2C3E44">'+p[0]+'</span> <span style="color:#808B94">'+p[1]+'</span></div>';}).join('');}
   // QR
