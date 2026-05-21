@@ -1285,37 +1285,33 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Anonym deltager-ID
 const SID = sessionStorage.getItem('nis2_sid') || 'dx' + Math.random().toString(36).substr(2,5);
 sessionStorage.setItem('nis2_sid', SID);
 
-// Vis session-ID i topbar
 setTimeout(() => {
   const el = document.getElementById('sid-indicator');
   if(el) el.textContent = '● ' + SID;
 }, 500);
 
-// Aktuel Firebase-session state
-let currentSessionId = null;
-let currentState = null;
-
-// Afgør om ventesskærm eller simulation skal vises
-// Guard: kør ikke inden DOM er klar
-let _domReady = false;
-document.addEventListener('DOMContentLoaded', () => { _domReady = true; });
-if(document.readyState !== 'loading') _domReady = true;
+// Vent på at BEGGE værdier er modtaget inden vi evaluerer
+let _stateReceived = false;
+let _idReceived = false;
+let _currentState = null;
+let _currentSessionId = null;
 
 function evaluateSession() {
-  if(!_domReady) { setTimeout(evaluateSession, 50); return; }
+  // Vent til begge listeners har svaret
+  if(!_stateReceived || !_idReceived) return;
+
   const waiting = document.getElementById('waiting-screen');
   const appEl = document.getElementById('app');
   if(!waiting || !appEl) return;
 
-  // Session-ID skal være frisk – startet inden for 8 timer
-  const ts = currentSessionId ? parseInt(currentSessionId.replace('ses-','')) : 0;
-  const sessionFresh = ts && (Date.now() - ts) < 8 * 60 * 60 * 1000;
+  // Tjek om session-ID er frisk (startet inden for 8 timer)
+  const ts = _currentSessionId ? parseInt(_currentSessionId.replace('ses-','')) : 0;
+  const sessionFresh = ts > 0 && (Date.now() - ts) < 8 * 60 * 60 * 1000;
 
-  if(currentState === 'active' && sessionFresh) {
+  if(_currentState === 'active' && sessionFresh) {
     waiting.style.display = 'none';
     appEl.style.display = 'block';
     appEl.className = 'outer';
@@ -1329,27 +1325,25 @@ function evaluateSession() {
   }
 }
 
-// Send svar til Firebase med sessionId – bruges til filtrering i facilitator
 window.fbSend = function(roundIdx, quality, shortText) {
   set(ref(db, 'answers/' + roundIdx + '/' + SID), {
     quality, shortText, ts: Date.now(),
-    sessionId: currentSessionId
+    sessionId: _currentSessionId
   }).catch(e => console.warn('Firebase send fejl:', e));
 };
 
-// Lyt på session/id – opdater currentSessionId
 onValue(ref(db, 'session/id'), snap => {
-  currentSessionId = snap.val() || null;
+  _currentSessionId = snap.val() || null;
+  _idReceived = true;
   evaluateSession();
 });
 
-// Lyt på session/state
 onValue(ref(db, 'session/state'), snap => {
-  currentState = snap.val();
+  _currentState = snap.val();
+  _stateReceived = true;
   evaluateSession();
 });
 
-// Lyt på reset-signal fra facilitator
 onValue(ref(db, 'session/resetSignal'), snap => {
   const v = snap.val();
   if(v && window._lastReset && v > window._lastReset) {
