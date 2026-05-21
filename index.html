@@ -1220,7 +1220,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Anonym session-ID
+// Anonym deltager-ID
 const SID = sessionStorage.getItem('nis2_sid') || 'dx' + Math.random().toString(36).substr(2,5);
 sessionStorage.setItem('nis2_sid', SID);
 
@@ -1230,33 +1230,52 @@ setTimeout(() => {
   if(el) el.textContent = '● ' + SID;
 }, 500);
 
-// Send svar til Firebase - kaldes fra choose()
-window.fbSend = function(roundIdx, quality, shortText) {
-  set(ref(db, 'answers/' + roundIdx + '/' + SID), {
-    quality, shortText, ts: Date.now()
-  }).catch(e => console.warn('Firebase send fejl:', e));
-};
+// Aktuel Firebase-session state
+let currentSessionId = null;
+let currentState = null;
 
-// Lyt på session/state – vis ventesskærm indtil facilitator starter
-onValue(ref(db, 'session/state'), snap => {
-  const state = snap.val();
+// Afgør om ventesskærm eller simulation skal vises
+function evaluateSession() {
   const waiting = document.getElementById('waiting-screen');
-  const app = document.getElementById('app');
-  if(!waiting || !app) return;
-  if(state === 'active') {
-    // Session er startet af facilitator
+  const appEl = document.getElementById('app');
+  if(!waiting || !appEl) return;
+
+  // Session-ID skal være frisk – startet inden for 8 timer
+  const ts = currentSessionId ? parseInt(currentSessionId.replace('ses-','')) : 0;
+  const sessionFresh = ts && (Date.now() - ts) < 8 * 60 * 60 * 1000;
+
+  if(currentState === 'active' && sessionFresh) {
     waiting.style.display = 'none';
-    app.style.display = 'block';
-    app.className = 'outer';
-    // Render kun hvis simulation ikke allerede er i gang
+    appEl.style.display = 'block';
+    appEl.className = 'outer';
     if(typeof render === 'function' && (!window.ST || window.ST.screen === 'start')) {
       render();
     }
   } else {
-    // Ingen aktiv session – vis ventesskærm
+    // Vis ventesskærm – ingen aktiv eller frisk session
     waiting.style.display = 'flex';
-    app.style.display = 'none';
+    appEl.style.display = 'none';
   }
+}
+
+// Send svar til Firebase med sessionId – bruges til filtrering i facilitator
+window.fbSend = function(roundIdx, quality, shortText) {
+  set(ref(db, 'answers/' + roundIdx + '/' + SID), {
+    quality, shortText, ts: Date.now(),
+    sessionId: currentSessionId
+  }).catch(e => console.warn('Firebase send fejl:', e));
+};
+
+// Lyt på session/id – opdater currentSessionId
+onValue(ref(db, 'session/id'), snap => {
+  currentSessionId = snap.val() || null;
+  evaluateSession();
+});
+
+// Lyt på session/state
+onValue(ref(db, 'session/state'), snap => {
+  currentState = snap.val();
+  evaluateSession();
 });
 
 // Lyt på reset-signal fra facilitator
