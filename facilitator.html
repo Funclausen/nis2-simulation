@@ -793,7 +793,13 @@ function buildRows(){
   const ids=new Set();
   Object.values(window.allAnswers||{}).forEach(r=>Object.keys(r||{}).forEach(id=>ids.add(id)));
   return [...ids].map(id=>{
-    const row={id,good:0,neutral:0,bad:0,answered:0};
+    // Brug teamnavn hvis tilgængeligt
+    let displayName = id;
+    for(let i=0;i<ROUND_META.length;i++){
+      const a=(window.allAnswers[i]||{})[id];
+      if(a&&a.teamName){ displayName=a.teamName; break; }
+    }
+    const row={id, displayName, good:0,neutral:0,bad:0,answered:0};
     for(let i=0;i<ROUND_META.length;i++){
       const a=(window.allAnswers[i]||{})[id];
       if(!a)continue;
@@ -812,7 +818,7 @@ function renderScorecard(){
   el.innerHTML=`<table class="score-table">
     <thead><tr><th>Gruppe</th><th>Runder</th><th>Lav konsekvens</th><th>Kritisk</th><th>Score</th></tr></thead>
     <tbody>${rows.map(r=>`<tr>
-      <td style="font-weight:600">${esc(r.id)}</td>
+      <td style="font-weight:600">${esc(r.displayName||r.id)}</td>
       <td>${r.answered}/${ROUND_META.length}</td>
       <td>${r.good}</td>
       <td>${r.bad}</td>
