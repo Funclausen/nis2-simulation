@@ -11,7 +11,7 @@ $expected=(int)($b['expectedParticipants']??15);
 $expected=max(1,min(500,$expected));
 $code='';
 for($i=0;$i<10;$i++){
-  $code=strtoupper(substr(bin2hex(random_bytes(5)),0,8));
+  $code=strtoupper(bin2hex(random_bytes(6)));
   try{
     $q=nis2_db()->prepare('INSERT INTO nis2_sessions (session_code,title,expected_participants,created_by) VALUES (?,?,?,?)');
     $q->execute([$code,mb_substr($title,0,160),$expected,nis2_admin_user_id()]);

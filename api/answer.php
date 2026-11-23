@@ -8,10 +8,11 @@ $code = strtoupper(trim((string)($b['code'] ?? '')));
 $browserId = trim((string)($b['browserId'] ?? ''));
 $teamName = trim((string)($b['teamName'] ?? ''));
 $round = filter_var($b['round'] ?? null, FILTER_VALIDATE_INT);
+$resetVersion = filter_var($b['resetVersion'] ?? null, FILTER_VALIDATE_INT);
 $quality = (string)($b['quality'] ?? '');
 $shortText = trim((string)($b['shortText'] ?? ''));
 
-if ($code === '' || $browserId === '' || $round === false || $round < 0 || $round > 7 ||
+if ($code === '' || $browserId === '' || $resetVersion === false || $resetVersion < 0 || $round === false || $round < 0 || $round > 7 ||
     !in_array($quality, ['good','neutral','bad'], true) || $shortText === '') {
     nis2_json(['error' => 'invalid_payload'], 422);
 }
@@ -22,10 +23,10 @@ if (strlen($browserId) > 64 || mb_strlen($teamName) > 120 || mb_strlen($shortTex
 $pdo = nis2_db();
 $pdo->beginTransaction();
 try {
-    $q = $pdo->prepare('SELECT id, status FROM nis2_sessions WHERE session_code = ? FOR UPDATE');
+    $q = $pdo->prepare('SELECT id, status, reset_version FROM nis2_sessions WHERE session_code = ? FOR UPDATE');
     $q->execute([$code]);
     $session = $q->fetch();
-    if (!$session || $session['status'] !== 'active') {
+    if (!$session || $session['status'] !== 'active' || (int)$session['reset_version'] !== $resetVersion) {
         $pdo->rollBack();
         nis2_json(['error' => 'session_not_active'], 409);
     }

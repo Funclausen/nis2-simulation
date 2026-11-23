@@ -3,12 +3,13 @@
 (() => {
   const API = './api';
   const POLL_MS = 1500;
-  const browserId = sessionStorage.getItem('nis2_sid') || ('dx' + crypto.getRandomValues(new Uint32Array(1))[0].toString(36));
+  const browserId = sessionStorage.getItem('nis2_sid') || ('dx' + crypto.randomUUID());
   sessionStorage.setItem('nis2_sid', browserId);
 
   let code = new URLSearchParams(location.search).get('s') || sessionStorage.getItem('nis2_session_code') || '';
   let lastReset = null;
   let timer = null;
+  let polling = false;
 
   async function request(path, options={}) {
     const res = await fetch(API + path, {
@@ -23,15 +24,21 @@
   }
 
   async function poll() {
-    if (!code) return;
+    if (!code || polling) return;
+    polling = true;
     try {
       const data = await request('/session.php?code=' + encodeURIComponent(code), {headers:{}});
       const s = data.session;
-      if (lastReset !== null && Number(s.reset_version) !== Number(lastReset) && typeof window.restart === 'function') window.restart();
-      lastReset = Number(s.reset_version);
+      const resetVersion = Number(s.reset_version);
+      const reset = lastReset !== null && resetVersion !== lastReset;
+      lastReset = resetVersion;
+      if (reset && s.status === 'active') window.restart();
       window.dispatchEvent(new CustomEvent('nis2:session', {detail:s}));
+      if (reset && s.status !== 'active') window.restart();
     } catch(e) {
       window.dispatchEvent(new CustomEvent('nis2:error', {detail:e}));
+    } finally {
+      polling = false;
     }
   }
 
@@ -47,7 +54,7 @@
     async sendAnswer(round, quality, shortText, teamName='') {
       return request('/answer.php', {
         method:'POST',
-        body:JSON.stringify({code,browserId,teamName,round,quality,shortText})
+        body:JSON.stringify({code,browserId,teamName,round,quality,shortText,resetVersion:lastReset})
       });
     },
     startPolling() {

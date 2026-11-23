@@ -1,4 +1,4 @@
-// Facilitator transport. Requires /private auth + CSRF integration before use.
+// Facilitator transport for the Hannestad portal session.
 (() => {
   const API='./api';
   async function req(path, method='GET', body=null, csrf='') {
@@ -14,6 +14,6 @@
     setState:(code,status,csrf)=>req('/session-state.php','POST',{code,status},csrf),
     setRound:(code,round,csrf)=>req('/session-round.php','POST',{code,round},csrf),
     reset:(code,csrf)=>req('/session-reset.php','POST',{code},csrf),
-    answers:(code,round)=>req('/answers.php?code='+encodeURIComponent(code)+'&round='+round)
+    answers:code=>req('/answers.php?code='+encodeURIComponent(code))
   };
 })();
