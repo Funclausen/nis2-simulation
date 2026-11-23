@@ -1185,84 +1185,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 </script>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCf61thmI8AyQUkRldS2FmmZZFpa6yAXDc",
-  authDomain: "nis2-simulation.firebaseapp.com",
-  databaseURL: "https://nis2-simulation-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "nis2-simulation",
-  storageBucket: "nis2-simulation.firebasestorage.app",
-  messagingSenderId: "570342903290",
-  appId: "1:570342903290:web:cbeb11ba80c8e941ece843"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-const SID = sessionStorage.getItem('nis2_sid') || 'dx' + Math.random().toString(36).substr(2,5);
-sessionStorage.setItem('nis2_sid', SID);
-
-let currentSessionId = null; // Opdateres fra Firebase session/id
-
-setTimeout(() => {
-  const el = document.getElementById('sid-indicator');
-  if(el) el.textContent = '● ' + SID;
-}, 500);
-
-// Stol 100% på session/state fra facilitator
-// 'active'  → vis simulation
-// alt andet → vis ventesskærm
-
-// Hent session/id så det kan sendes med svar
-onValue(ref(db, 'session/id'), snap => {
-  currentSessionId = snap.val() || null;
-});
-
-onValue(ref(db, 'session/state'), snap => {
-  const state = snap.val();
-  const waiting = document.getElementById('waiting-screen');
-  const appEl   = document.getElementById('app');
-  if(!waiting || !appEl) return;
-
-  if(state === 'active') {
-    waiting.style.display = 'none';
-    appEl.style.display   = 'block';
-    appEl.className       = 'outer';
-    if(typeof window.render === 'function' && (!window.ST || window.ST.screen === 'start')) {
-      window.render();
-    }
-  } else {
-    waiting.style.display = 'flex';
-    appEl.style.display   = 'none';
-  }
-});
-
-// Send svar til Firebase
+<script src="migration/php/assets/nis2-client.js"></script>
+<script>
 window.fbSend = function(roundIdx, quality, shortText) {
-  const teamName = (window._teamName && window._teamName.trim()) ? window._teamName.trim() : null;
-  const payload = {
-    quality,
-    shortText,
-    ts: Date.now(),
-    sessionId: currentSessionId
-  };
-  if(teamName) payload.teamName = teamName;
-  set(ref(db, 'answers/' + roundIdx + '/' + SID), payload)
-    .catch(e => console.warn('Firebase:', e));
+  const teamName=(window._teamName&&window._teamName.trim())?window._teamName.trim():'';
+  return window.nis2Transport.sendAnswer(roundIdx,quality,shortText,teamName).catch(e=>console.warn('NIS2 API:',e));
 };
-
-// Reset-signal fra facilitator
-onValue(ref(db, 'session/resetSignal'), snap => {
-  const v = snap.val();
-  if(v && window._lastReset && v > window._lastReset) {
-    window._lastReset = v;
-    if(typeof window.restart === 'function') window.restart();
-  }
-  if(v && !window._lastReset) window._lastReset = v;
+window.addEventListener('nis2:session',ev=>{
+  const state=ev.detail&&ev.detail.status, waiting=document.getElementById('waiting-screen'), appEl=document.getElementById('app');
+  if(!waiting||!appEl)return;
+  if(state==='active'){waiting.style.display='none';appEl.style.display='block';appEl.className='outer';if(typeof window.render==='function'&&(!window.ST||window.ST.screen==='start'))window.render();}
+  else{waiting.style.display='flex';appEl.style.display='none';}
 });
+setTimeout(()=>{const el=document.getElementById('sid-indicator');if(el)el.textContent='● '+window.nis2Transport.getBrowserId();window.nis2Transport.startPolling();},0);
 </script>
 </body>
 </html>
