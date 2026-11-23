@@ -5,7 +5,7 @@ function nis2_db(): PDO {
     static $pdo = null;
     if ($pdo instanceof PDO) return $pdo;
 
-    $local = __DIR__ . '/config.local.php';
+    $local = dirname(__DIR__) . '/config.local.php';
     if (!is_file($local)) {
         throw new RuntimeException('NIS2 database configuration is missing.');
     }
