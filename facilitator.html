@@ -504,7 +504,7 @@ button,input{font:inherit}
 
 </div><!-- .app-shell -->
 
-<script src="migration/php/assets/nis2-admin.js"></script>
+<script src="assets/nis2-admin.js"></script>
 <script>
 let currentRound=0,currentSessionId=null,currentSessionCode=null;
 let totalTimerStart=null,totalTimerInterval=null,answerPoll=null;
@@ -574,7 +574,7 @@ async function pollAnswers(){
  try{
   const d=await window.nis2AdminTransport.answers(currentSessionCode,currentRound);
   const map={}; (d.answers||[]).forEach((a,i)=>map[a.browser_id||String(i)]=a);
-  window.rawAnswers={[currentRound]:map}; window.allAnswers=window.rawAnswers; updateDisplay();
+  window.rawAnswers[currentRound]=map; window.allAnswers=window.rawAnswers; updateDisplay();
  }catch(e){console.warn('NIS2 API:',e);}
 }
 window.setExpected=window._setExpected=n=>{window.expectedParticipants=parseInt(n,10)||1;updateDisplay();};
