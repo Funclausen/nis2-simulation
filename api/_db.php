@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+ini_set('display_errors', '0');
+
 function nis2_db(): PDO {
     static $pdo = null;
     if ($pdo instanceof PDO) return $pdo;
@@ -11,8 +13,9 @@ function nis2_db(): PDO {
         throw new RuntimeException('NIS2 database configuration is missing.');
     }
     $dsn = 'mysql:host=' . $cfg['host'] . ';dbname=' . $cfg['database'] . ';charset=utf8mb4';
+    $foundRows = defined('Pdo\Mysql::ATTR_FOUND_ROWS') ? Pdo\Mysql::ATTR_FOUND_ROWS : PDO::MYSQL_ATTR_FOUND_ROWS;
     $pdo = new PDO($dsn, $cfg['username'], $cfg['password'], [
-        PDO::MYSQL_ATTR_FOUND_ROWS => true,
+        $foundRows => true,
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
