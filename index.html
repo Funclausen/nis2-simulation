@@ -1160,12 +1160,12 @@ function genPDF(){
 }
 
 // ─── START ───────────────────────────────────────────────────────────────
-// render() startes af Firebase-listeneren når session/state = 'active'
+// render() startes af sessions-API’et når session/state = 'active'
 // Briefing-indholdet er statisk i HTML – ingen renderWaiting() nødvendig
 window.render = render;
 window.restart = restart;
 
-// Teamnavn – gemmes i sessionStorage og sendes med Firebase-svar
+// Teamnavn – gemmes i sessionStorage og sendes med sessions-API
 window._teamName = sessionStorage.getItem('nis2_team') || '';
 
 window.updateTeamName = function(val) {
@@ -1185,7 +1185,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 </script>
-<script src="migration/php/assets/nis2-client.js"></script>
+<script src="assets/nis2-client.js"></script>
 <script>
 window.fbSend = function(roundIdx, quality, shortText) {
   const teamName=(window._teamName&&window._teamName.trim())?window._teamName.trim():'';
