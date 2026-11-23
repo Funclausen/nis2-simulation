@@ -569,6 +569,7 @@ function filterAnswers(raw){
 
 
 function csrf(){return document.querySelector('meta[name="csrf-token"]')?.content||'';}
+function updateJoinQR(code){const url='https://hannestad.dk/private/nis2/?s='+encodeURIComponent(code);const el=document.getElementById('qrcode');if(el){el.innerHTML='';if(window.QRCode)new QRCode(el,{text:url,width:140,height:140,colorDark:'#3A646D',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}const lbl=document.querySelector('.qr-url');if(lbl)lbl.textContent=url;}
 async function pollAnswers(){
  if(!currentSessionCode)return;
  try{
@@ -581,7 +582,7 @@ window.setExpected=window._setExpected=n=>{window.expectedParticipants=parseInt(
 window._startSession=window.startSession=async()=>{
  const expected=parseInt(document.getElementById('expected-input').value,10)||15;
  const d=await window.nis2AdminTransport.create('NIS2 Ledelsessimulation',expected,csrf());
- currentSessionCode=d.session.code; currentSessionId=currentSessionCode; window.expectedParticipants=expected;
+ currentSessionCode=d.session.code; currentSessionId=currentSessionCode; window.expectedParticipants=expected; updateJoinQR(currentSessionCode);
  await window.nis2AdminTransport.setState(currentSessionCode,'active',csrf());
  currentRound=0; window.rawAnswers={};window.allAnswers={}; startTotalTimer();showScreen('live');setRound(0);
  clearInterval(answerPoll);answerPoll=setInterval(pollAnswers,1500);pollAnswers();
