@@ -90,7 +90,9 @@ button,input{font:inherit}
 /* QR + setup */
 .qr-setup{display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center}
 .qr-wrap{background:#EBF4F6;border:1px solid #BED4DB;border-radius:5px;padding:.75rem;text-align:center;display:flex;flex-direction:column;align-items:center}
-.qr-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#808B94;margin-bottom:.4rem}
+.qr-preview{min-width:11rem}
+.qr-image:not(:empty){background:#fff;padding:16px;margin-top:.5rem;display:inline-block;line-height:0}
+.qr-url{display:block}
 .qr-url{font-size:13px;font-weight:700;color:#3A646D;word-break:break-all;margin-top:.4rem}
 .setup-area{display:flex;flex-direction:column;gap:.75rem}
 .setup-row{display:flex;align-items:center;gap:.65rem}
@@ -219,7 +221,6 @@ button,input{font:inherit}
   .progression{grid-template-columns:repeat(4,1fr)}
   .qr-setup{grid-template-columns:1fr;gap:.75rem}
   .qr-wrap{text-align:center}
-  #qrcode{display:flex;justify-content:center}
 }
 @media(max-width:900px){
   #live-screen{flex-direction:column}
@@ -343,11 +344,7 @@ button,input{font:inherit}
   <div class="card">
     <div class="card-title">Deltagerlink og sessionopsætning</div>
     <div class="qr-setup">
-      <div class="qr-wrap">
-        <div class="qr-lbl">Scan eller skriv adressen</div>
-        <div id="qrcode"></div>
-        <div class="qr-url">Deltagerlink vises, når sessionen starter</div>
-      </div>
+      <div class="qr-wrap qr-preview">Deltagerlink og QR-kode vises, når sessionen starter.</div>
       <div class="setup-area">
         <div class="setup-row">
           <label for="expected-input">Antal grupper / terminaler:</label>
@@ -369,6 +366,12 @@ button,input{font:inherit}
 
   <!-- Sidebar -->
   <aside class="sidebar">
+
+    <details class="sb-section" id="live-join" open hidden>
+      <summary>Deltagerlink</summary>
+      <div class="qr-image" id="qrcode"></div>
+      <a class="qr-url" id="join-link" target="_blank" rel="noopener"></a>
+    </details>
 
     <!-- Rundenavigation -->
     <div class="sb-section">
@@ -556,7 +559,23 @@ function startTotalTimer(){
 }
 
 function csrf(){return document.querySelector('meta[name="csrf-token"]')?.content||'';}
-function updateJoinQR(code){const url='https://hannestad.dk/private/nis2/?s='+encodeURIComponent(code);const el=document.getElementById('qrcode');if(el){el.innerHTML='';if(window.QRCode)new QRCode(el,{text:url,width:140,height:140,colorDark:'#3A646D',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}const lbl=document.querySelector('.qr-url');if(lbl)lbl.textContent=url;}
+function updateJoinQR(code){
+  const url = 'https://hannestad.dk/private/nis2/?s=' + encodeURIComponent(code);
+  const link = document.getElementById('join-link');
+  link.href = url;
+  link.textContent = url;
+  const image = document.getElementById('qrcode');
+  image.replaceChildren();
+  const panel = document.getElementById('live-join');
+  panel.hidden = false;
+  panel.open = true;
+  if (window.QRCode) {
+    new QRCode(image, {
+      text: url, width: 132, height: 132, colorDark: '#3A646D',
+      colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+}
 async function pollAnswers(){
  const code = currentSessionCode;
  if(!code || answerPollPending)return;
@@ -588,7 +607,7 @@ window._startSession=window.startSession=async()=>{
  currentRound=0; window.allAnswers={}; startTotalTimer();showScreen('live');updateDisplay();
  clearInterval(answerPoll);answerPoll=setInterval(pollAnswers,1500);pollAnswers();
 };
-window._endSession=window.endSession=async()=>{if(currentSessionCode)await window.nis2AdminTransport.setState(currentSessionCode,'finished',csrf());clearInterval(answerPoll);clearInterval(totalTimerInterval);const dot=document.getElementById('status-dot'),lbl=document.getElementById('session-state');if(dot)dot.classList.remove('live');if(lbl)lbl.textContent='Afsluttet';};
+window._endSession=window.endSession=async()=>{if(currentSessionCode)await window.nis2AdminTransport.setState(currentSessionCode,'finished',csrf());clearInterval(answerPoll);clearInterval(totalTimerInterval);const dot=document.getElementById('status-dot'),lbl=document.getElementById('session-state');if(dot)dot.classList.remove('live');if(lbl)lbl.textContent='Afsluttet';document.getElementById('live-join').hidden=true;};
 window._resetSession=window.resetSession=async()=>{if(!currentSessionCode||!confirm('Nulstil alle svar og gå til opstartsskærmen?'))return;await window.nis2AdminTransport.reset(currentSessionCode,csrf());clearInterval(totalTimerInterval);clearInterval(answerPoll);currentSessionCode=null;currentRound=0;window.allAnswers={};document.getElementById('timer-total').textContent='00:00';showScreen('intro');updateDisplay();};
 function showScreen(name){document.getElementById('intro-screen').classList.toggle('active',name==='intro');document.getElementById('live-screen').classList.toggle('active',name==='live');}
 window.setRound=r=>{currentRound=Math.max(0,Math.min(ROUND_META.length-1,r));if(currentSessionCode)window.nis2AdminTransport.setRound(currentSessionCode,currentRound,csrf()).catch(e=>console.warn('NIS2 API:',e));pollAnswers();updateDisplay();};
