@@ -1,0 +1,4 @@
+Options -Indexes
+DirectoryIndex index.html
+RedirectMatch 302 "^/private/nis2/facilitator\.(html|php)$" "/privat/nis2/"
+Header always set Referrer-Policy "no-referrer"

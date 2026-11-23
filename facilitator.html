@@ -2,11 +2,12 @@
 <html lang="da">
 <head>
 <meta charset="UTF-8">
+<meta name="csrf-token" content="%%NIS2_CSRF%%">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NIS2 Facilitator – DataBridge Solutions A/S</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html{height:100%}
@@ -89,7 +90,9 @@ button,input{font:inherit}
 /* QR + setup */
 .qr-setup{display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center}
 .qr-wrap{background:#EBF4F6;border:1px solid #BED4DB;border-radius:5px;padding:.75rem;text-align:center;display:flex;flex-direction:column;align-items:center}
-.qr-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#808B94;margin-bottom:.4rem}
+.qr-preview{min-width:11rem}
+.qr-image:not(:empty){background:#fff;padding:16px;margin-top:.5rem;display:inline-block;line-height:0}
+.qr-url{display:block}
 .qr-url{font-size:13px;font-weight:700;color:#3A646D;word-break:break-all;margin-top:.4rem}
 .setup-area{display:flex;flex-direction:column;gap:.75rem}
 .setup-row{display:flex;align-items:center;gap:.65rem}
@@ -218,7 +221,6 @@ button,input{font:inherit}
   .progression{grid-template-columns:repeat(4,1fr)}
   .qr-setup{grid-template-columns:1fr;gap:.75rem}
   .qr-wrap{text-align:center}
-  #qrcode{display:flex;justify-content:center}
 }
 @media(max-width:900px){
   #live-screen{flex-direction:column}
@@ -342,11 +344,7 @@ button,input{font:inherit}
   <div class="card">
     <div class="card-title">Deltagerlink og sessionopsætning</div>
     <div class="qr-setup">
-      <div class="qr-wrap">
-        <div class="qr-lbl">Scan eller skriv adressen</div>
-        <div id="qrcode"></div>
-        <div class="qr-url">Funclausen.github.io/nis2-simulation</div>
-      </div>
+      <div class="qr-wrap qr-preview">Deltagerlink og QR-kode vises, når sessionen starter.</div>
       <div class="setup-area">
         <div class="setup-row">
           <label for="expected-input">Antal grupper / terminaler:</label>
@@ -368,6 +366,12 @@ button,input{font:inherit}
 
   <!-- Sidebar -->
   <aside class="sidebar">
+
+    <details class="sb-section" id="live-join" open hidden>
+      <summary>Deltagerlink</summary>
+      <div class="qr-image" id="qrcode"></div>
+      <a class="qr-url" id="join-link" target="_blank" rel="noopener"></a>
+    </details>
 
     <!-- Rundenavigation -->
     <div class="sb-section">
@@ -504,27 +508,11 @@ button,input{font:inherit}
 
 </div><!-- .app-shell -->
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-database.js";
-
-const firebaseConfig={
-  apiKey:"AIzaSyCf61thmI8AyQUkRldS2FmmZZFpa6yAXDc",
-  authDomain:"nis2-simulation.firebaseapp.com",
-  databaseURL:"https://nis2-simulation-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId:"nis2-simulation",
-  storageBucket:"nis2-simulation.firebasestorage.app",
-  messagingSenderId:"570342903290",
-  appId:"1:570342903290:web:cbeb11ba80c8e941ece843"
-};
-
-const app=initializeApp(firebaseConfig);
-const db=getDatabase(app);
-
-let currentRound=0, currentSessionId=null;
-let totalTimerStart=null, totalTimerInterval=null;
-window.rawAnswers={}; window.allAnswers={}; window.expectedParticipants=15;
-
+<script src="assets/nis2-admin.js"></script>
+<script>
+let currentRound=0,currentSessionCode=null,answerPollPending=false;
+let totalTimerStart=null,totalTimerInterval=null,answerPoll=null;
+window.allAnswers={};window.expectedParticipants=15;
 const ROUND_META=[
   {time:"Mandag kl. 08.12",module:"Fase 1 – Opdagelse og første respons",lawRef:"§ 7",
    notes:["Typisk fejl: Ledere afventer leverandøren og etablerer ingen intern struktur.","Hvem i jeres organisation har Mettes rolle – og er det aftalt på forhånd?","NIS2-pointe: § 7 kræver aktivt tilsyn og dokumentation fra minut ét."],
@@ -552,6 +540,7 @@ const ROUND_META=[
    debrief:"Hvad er det ene konkrete skridt I forpligter jer til inden for 14 dage?"}
 ];
 
+
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
 
 function fmtTime(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60),sc=s%60;return`${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;}
@@ -569,116 +558,62 @@ function startTotalTimer(){
   },1000);
 }
 
-function filterAnswers(raw){
-  if(!currentSessionId)return{};
-  const out={};
-  Object.entries(raw||{}).forEach(([round,answers])=>{
-    const kept={};
-    Object.entries(answers||{}).forEach(([id,ans])=>{
-      if(ans&&(!ans.sessionId||ans.sessionId===currentSessionId))kept[id]=ans;
+function csrf(){return document.querySelector('meta[name="csrf-token"]')?.content||'';}
+function updateJoinQR(code){
+  const url = 'https://hannestad.dk/private/nis2/?s=' + encodeURIComponent(code);
+  const link = document.getElementById('join-link');
+  link.href = url;
+  link.textContent = url;
+  const image = document.getElementById('qrcode');
+  image.replaceChildren();
+  const panel = document.getElementById('live-join');
+  panel.hidden = false;
+  panel.open = true;
+  if (window.QRCode) {
+    new QRCode(image, {
+      text: url, width: 132, height: 132, colorDark: '#3A646D',
+      colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
     });
-    out[round]=kept;
-  });
-  return out;
-}
-
-onValue(ref(db,'session/id'),snap=>{
-  currentSessionId=snap.val()||null;
-  window.allAnswers=filterAnswers(window.rawAnswers);
-  updateDisplay();
-});
-
-onValue(ref(db,'session/state'),snap=>{
-  const state=snap.val();
-  const dot=document.getElementById('status-dot');
-  const lbl=document.getElementById('session-state');
-  if(state==='active'){
-    dot.classList.add('live');
-    lbl.textContent='Live';
-  } else {
-    dot.classList.remove('live');
-    lbl.textContent='Venter';
   }
-});
-
-onValue(ref(db,'answers'),snap=>{
-  window.rawAnswers=snap.val()||{};
-  window.allAnswers=filterAnswers(window.rawAnswers);
-  updateDisplay();
-});
-
-window.setExpected=window._setExpected=n=>{window.expectedParticipants=parseInt(n,10)||1;updateDisplay();};
-
-window._startSession=window.startSession=async()=>{
-  const newSid='ses-'+Date.now();
-  await remove(ref(db,'answers')).catch(()=>{});
-  await set(ref(db,'session/resetSignal'),Date.now());
-  await set(ref(db,'session/activeRound'),0);
-  await set(ref(db,'session/id'),newSid);
-  await set(ref(db,'session/state'),'active');
-  currentSessionId=newSid;
-  window.rawAnswers={}; window.allAnswers={};
-  currentRound=0;
-  window.expectedParticipants=parseInt(document.getElementById('expected-input').value,10)||15;
-  startTotalTimer();
-  showScreen('live');
-  setRound(0);
-};
-
-window._endSession=window.endSession=async()=>{
-  await set(ref(db,'session/state'),'waiting').catch(()=>{});
-  const dot=document.getElementById('status-dot');
-  const lbl=document.getElementById('session-state');
-  if(dot) dot.classList.remove('live');
-  if(lbl) lbl.textContent='Venter';
-};
-
-window._resetSession=window.resetSession=async()=>{
-  if(!confirm('Nulstil alle svar og gå til opstartsskærmen?'))return;
-  clearInterval(totalTimerInterval);
-  document.getElementById('timer-total').textContent='00:00';
-  await remove(ref(db,'answers')).catch(()=>{});
-  await set(ref(db,'session/resetSignal'),Date.now());
-  await set(ref(db,'session/activeRound'),0);
-  await set(ref(db,'session/id'),null);
-  await set(ref(db,'session/state'),'waiting');
-  currentSessionId=null; currentRound=0;
-  window.rawAnswers={}; window.allAnswers={};
-  showScreen('intro');
-  updateDisplay();
-};
-
-function showScreen(name){
-  document.getElementById('intro-screen').classList.toggle('active',name==='intro');
-  document.getElementById('live-screen').classList.toggle('active',name==='live');
 }
-
-window.setRound=r=>{
-  currentRound=Math.max(0,Math.min(ROUND_META.length-1,r));
-  set(ref(db,'session/activeRound'),currentRound).catch(()=>{});
+async function pollAnswers(){
+ const code = currentSessionCode;
+ if(!code || answerPollPending)return;
+ answerPollPending=true;
+ try{
+  const d=await window.nis2AdminTransport.answers(code);
+  if (code !== currentSessionCode) return;
+  const rounds={};
+  for (const answer of d.answers) {
+    const round=rounds[answer.round_no] ??= Object.create(null);
+    round[answer.browser_id]={quality:answer.quality, shortText:answer.short_text, teamName:answer.team_name};
+  }
+  window.allAnswers=rounds;
   updateDisplay();
+ }catch(e){console.warn('NIS2 API:',e);}
+ finally{answerPollPending=false;}
+}
+window.setExpected=window._setExpected=n=>{window.expectedParticipants=parseInt(n,10)||1;updateDisplay();};
+window._startSession=window.startSession=async()=>{
+ const expected=parseInt(document.getElementById('expected-input').value,10)||15;
+ const code = currentSessionCode || (await window.nis2AdminTransport.create('NIS2 Ledelsessimulation',expected,csrf())).session.code;
+ currentSessionCode=code;
+ await window.nis2AdminTransport.setState(code,'active',csrf());
+ window.expectedParticipants=expected;
+ const status=document.getElementById('session-state');
+ if(status)status.textContent='Aktiv';
+ document.getElementById('status-dot')?.classList.add('live');
+ updateJoinQR(code);
+ currentRound=0; window.allAnswers={}; startTotalTimer();showScreen('live');updateDisplay();
+ clearInterval(answerPoll);answerPoll=setInterval(pollAnswers,1500);pollAnswers();
 };
-window.prevRound=()=>window.setRound(currentRound-1);
-window.nextRound=()=>window.setRound(currentRound+1);
-window._setRound=window.setRound;
-window._prevRound=window.prevRound;
-window._nextRound=window.nextRound;
-
-window.showView=name=>{
-  ['dashboard','chart','notes','scorecard','debrief'].forEach(v=>{
-    document.getElementById('view-'+v).classList.toggle('active',v===name);
-    document.getElementById('nav-'+v).classList.toggle('active',v===name);
-  });
-  if(name==='notes')renderNotes();
-  if(name==='scorecard')renderScorecard();
-  if(name==='debrief')renderDebrief();
-  if(name==='dashboard')renderOverviewTable();
-};
+window._endSession=window.endSession=async()=>{if(currentSessionCode)await window.nis2AdminTransport.setState(currentSessionCode,'finished',csrf());clearInterval(answerPoll);clearInterval(totalTimerInterval);const dot=document.getElementById('status-dot'),lbl=document.getElementById('session-state');if(dot)dot.classList.remove('live');if(lbl)lbl.textContent='Afsluttet';document.getElementById('live-join').hidden=true;};
+window._resetSession=window.resetSession=async()=>{if(!currentSessionCode||!confirm('Nulstil alle svar og gå til opstartsskærmen?'))return;await window.nis2AdminTransport.reset(currentSessionCode,csrf());clearInterval(totalTimerInterval);clearInterval(answerPoll);currentSessionCode=null;currentRound=0;window.allAnswers={};document.getElementById('timer-total').textContent='00:00';showScreen('intro');updateDisplay();};
+function showScreen(name){document.getElementById('intro-screen').classList.toggle('active',name==='intro');document.getElementById('live-screen').classList.toggle('active',name==='live');}
+window.setRound=r=>{currentRound=Math.max(0,Math.min(ROUND_META.length-1,r));if(currentSessionCode)window.nis2AdminTransport.setRound(currentSessionCode,currentRound,csrf()).catch(e=>console.warn('NIS2 API:',e));pollAnswers();updateDisplay();};
+window.prevRound=()=>window.setRound(currentRound-1);window.nextRound=()=>window.setRound(currentRound+1);window._setRound=window.setRound;window._prevRound=window.prevRound;window._nextRound=window.nextRound;
+window.showView=name=>{['dashboard','chart','notes','scorecard','debrief'].forEach(v=>{document.getElementById('view-'+v).classList.toggle('active',v===name);document.getElementById('nav-'+v).classList.toggle('active',v===name);});if(name==='notes')renderNotes();if(name==='scorecard')renderScorecard();if(name==='debrief')renderDebrief();if(name==='dashboard')renderOverviewTable();};
 window._showView=window.showView;
-
-// Signal til stub-funktionerne at Firebase og alle handlers er klar
-window._fbReady=true;
-
 function updateDisplay(){
   const meta=ROUND_META[currentRound];
   if(!document.getElementById('current-round-label'))return;
@@ -713,7 +648,7 @@ function updateDisplay(){
 
   // Fordeling
   const c={good:0,neutral:0,bad:0};
-  const choiceCounts={};
+  const choiceCounts=Object.create(null);
   entries.forEach(e=>{
     c[e.quality]=(c[e.quality]||0)+1;
     const k=e.shortText||'Valg';
@@ -887,39 +822,30 @@ function initPage(){
 initPage();
 </script>
 <script>
-// Knaphandlere – venter på at Firebase-modulet er klar før udførelse
-function waitAndCall(fn,args,tries){
-  tries=tries||0;
-  if(typeof window._fbReady!=='undefined'){
-    window[fn].apply(null,args||[]);
-  } else if(tries>80){
-    var btn=document.querySelector('.start-btn');
-    if(btn){btn.textContent='⚠ Firebase ikke klar – tjek regler i Firebase Console';btn.style.background='#A32D2D';}
-  } else {
-    setTimeout(function(){waitAndCall(fn,args,tries+1);},100);
-  }
+// Forhindrer dobbeltklik, mens en session skifter tilstand.
+for (const action of ['startSession', 'endSession', 'resetSession']) {
+  const run = window[action];
+  window[action] = async () => {
+    if (window.sessionActionPending) return;
+    window.sessionActionPending = true;
+    try {
+      await run();
+    } catch (error) {
+      console.warn('NIS2 API:', error);
+      alert('Handlingen kunne ikke gennemføres. Prøv igen, eller tjek dit login.');
+    } finally {
+      window.sessionActionPending = false;
+    }
+  };
 }
-window.startSession=function(){waitAndCall('_startSession');};
-window.endSession=function(){waitAndCall('_endSession');};
-window.resetSession=function(){waitAndCall('_resetSession');};
-window.setExpected=function(v){waitAndCall('_setExpected',[v]);};
-window.setRound=function(r){waitAndCall('_setRound',[r]);};
-window.prevRound=function(){waitAndCall('_prevRound');};
-window.nextRound=function(){waitAndCall('_nextRound');};
-window.showView=function(n){waitAndCall('_showView',[n]);};
 
 document.addEventListener('DOMContentLoaded',function(){
   var persons=[['Mette Sørensen','CEO'],['Jakob Dahl','CFO'],['Line Kristensen','Head of Operations'],['Anders Møller','Juridisk rådgiver (ekstern)'],['Hanne Vestergaard','Bestyrelsesformand'],['TechOps ApS','IT-leverandør']];
   var kp=document.getElementById('key-persons');
   if(kp){kp.innerHTML=persons.map(function(p){return '<div style="background:#F3F4F7;border:1px solid #BED4DB;border-radius:4px;padding:.3rem .55rem;font-size:11px"><span style="font-weight:700;color:#2C3E44">'+p[0]+'</span> <span style="color:#808B94">'+p[1]+'</span></div>';}).join('');}
-  // QR
-  (function tryQR(n){
-    if(window.QRCode){
-      var el=document.getElementById('qrcode');
-      if(el&&!el.hasChildNodes()){new QRCode(el,{text:'https://Funclausen.github.io/nis2-simulation/',width:140,height:140,colorDark:'#3A646D',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
-    } else if(n>0){setTimeout(function(){tryQR(n-1);},150);}
-  })(20);
+
 });
+
 </script>
 </body>
 </html>
