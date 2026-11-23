@@ -504,27 +504,11 @@ button,input{font:inherit}
 
 </div><!-- .app-shell -->
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-database.js";
-
-const firebaseConfig={
-  apiKey:"AIzaSyCf61thmI8AyQUkRldS2FmmZZFpa6yAXDc",
-  authDomain:"nis2-simulation.firebaseapp.com",
-  databaseURL:"https://nis2-simulation-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId:"nis2-simulation",
-  storageBucket:"nis2-simulation.firebasestorage.app",
-  messagingSenderId:"570342903290",
-  appId:"1:570342903290:web:cbeb11ba80c8e941ece843"
-};
-
-const app=initializeApp(firebaseConfig);
-const db=getDatabase(app);
-
-let currentRound=0, currentSessionId=null;
-let totalTimerStart=null, totalTimerInterval=null;
-window.rawAnswers={}; window.allAnswers={}; window.expectedParticipants=15;
-
+<script src="migration/php/assets/nis2-admin.js"></script>
+<script>
+let currentRound=0,currentSessionId=null,currentSessionCode=null;
+let totalTimerStart=null,totalTimerInterval=null,answerPoll=null;
+window.rawAnswers={};window.allAnswers={};window.expectedParticipants=15;
 const ROUND_META=[
   {time:"Mandag kl. 08.12",module:"Fase 1 – Opdagelse og første respons",lawRef:"§ 7",
    notes:["Typisk fejl: Ledere afventer leverandøren og etablerer ingen intern struktur.","Hvem i jeres organisation har Mettes rolle – og er det aftalt på forhånd?","NIS2-pointe: § 7 kræver aktivt tilsyn og dokumentation fra minut ét."],
@@ -551,6 +535,7 @@ const ROUND_META=[
    notes:["Systemerne kører igen betyder ikke at hændelsen er afsluttet.","Hvad er jeres største NIS2-hul lige nu?","Endelig rapport og ISMS-opfølgning skal på plads."],
    debrief:"Hvad er det ene konkrete skridt I forpligter jer til inden for 14 dage?"}
 ];
+
 
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
 
@@ -582,103 +567,32 @@ function filterAnswers(raw){
   return out;
 }
 
-onValue(ref(db,'session/id'),snap=>{
-  currentSessionId=snap.val()||null;
-  window.allAnswers=filterAnswers(window.rawAnswers);
-  updateDisplay();
-});
 
-onValue(ref(db,'session/state'),snap=>{
-  const state=snap.val();
-  const dot=document.getElementById('status-dot');
-  const lbl=document.getElementById('session-state');
-  if(state==='active'){
-    dot.classList.add('live');
-    lbl.textContent='Live';
-  } else {
-    dot.classList.remove('live');
-    lbl.textContent='Venter';
-  }
-});
-
-onValue(ref(db,'answers'),snap=>{
-  window.rawAnswers=snap.val()||{};
-  window.allAnswers=filterAnswers(window.rawAnswers);
-  updateDisplay();
-});
-
-window.setExpected=window._setExpected=n=>{window.expectedParticipants=parseInt(n,10)||1;updateDisplay();};
-
-window._startSession=window.startSession=async()=>{
-  const newSid='ses-'+Date.now();
-  await remove(ref(db,'answers')).catch(()=>{});
-  await set(ref(db,'session/resetSignal'),Date.now());
-  await set(ref(db,'session/activeRound'),0);
-  await set(ref(db,'session/id'),newSid);
-  await set(ref(db,'session/state'),'active');
-  currentSessionId=newSid;
-  window.rawAnswers={}; window.allAnswers={};
-  currentRound=0;
-  window.expectedParticipants=parseInt(document.getElementById('expected-input').value,10)||15;
-  startTotalTimer();
-  showScreen('live');
-  setRound(0);
-};
-
-window._endSession=window.endSession=async()=>{
-  await set(ref(db,'session/state'),'waiting').catch(()=>{});
-  const dot=document.getElementById('status-dot');
-  const lbl=document.getElementById('session-state');
-  if(dot) dot.classList.remove('live');
-  if(lbl) lbl.textContent='Venter';
-};
-
-window._resetSession=window.resetSession=async()=>{
-  if(!confirm('Nulstil alle svar og gå til opstartsskærmen?'))return;
-  clearInterval(totalTimerInterval);
-  document.getElementById('timer-total').textContent='00:00';
-  await remove(ref(db,'answers')).catch(()=>{});
-  await set(ref(db,'session/resetSignal'),Date.now());
-  await set(ref(db,'session/activeRound'),0);
-  await set(ref(db,'session/id'),null);
-  await set(ref(db,'session/state'),'waiting');
-  currentSessionId=null; currentRound=0;
-  window.rawAnswers={}; window.allAnswers={};
-  showScreen('intro');
-  updateDisplay();
-};
-
-function showScreen(name){
-  document.getElementById('intro-screen').classList.toggle('active',name==='intro');
-  document.getElementById('live-screen').classList.toggle('active',name==='live');
+function csrf(){return document.querySelector('meta[name="csrf-token"]')?.content||'';}
+async function pollAnswers(){
+ if(!currentSessionCode)return;
+ try{
+  const d=await window.nis2AdminTransport.answers(currentSessionCode,currentRound);
+  const map={}; (d.answers||[]).forEach((a,i)=>map[a.browser_id||String(i)]=a);
+  window.rawAnswers={[currentRound]:map}; window.allAnswers=window.rawAnswers; updateDisplay();
+ }catch(e){console.warn('NIS2 API:',e);}
 }
-
-window.setRound=r=>{
-  currentRound=Math.max(0,Math.min(ROUND_META.length-1,r));
-  set(ref(db,'session/activeRound'),currentRound).catch(()=>{});
-  updateDisplay();
+window.setExpected=window._setExpected=n=>{window.expectedParticipants=parseInt(n,10)||1;updateDisplay();};
+window._startSession=window.startSession=async()=>{
+ const expected=parseInt(document.getElementById('expected-input').value,10)||15;
+ const d=await window.nis2AdminTransport.create('NIS2 Ledelsessimulation',expected,csrf());
+ currentSessionCode=d.session.code; currentSessionId=currentSessionCode; window.expectedParticipants=expected;
+ await window.nis2AdminTransport.setState(currentSessionCode,'active',csrf());
+ currentRound=0; window.rawAnswers={};window.allAnswers={}; startTotalTimer();showScreen('live');setRound(0);
+ clearInterval(answerPoll);answerPoll=setInterval(pollAnswers,1500);pollAnswers();
 };
-window.prevRound=()=>window.setRound(currentRound-1);
-window.nextRound=()=>window.setRound(currentRound+1);
-window._setRound=window.setRound;
-window._prevRound=window.prevRound;
-window._nextRound=window.nextRound;
-
-window.showView=name=>{
-  ['dashboard','chart','notes','scorecard','debrief'].forEach(v=>{
-    document.getElementById('view-'+v).classList.toggle('active',v===name);
-    document.getElementById('nav-'+v).classList.toggle('active',v===name);
-  });
-  if(name==='notes')renderNotes();
-  if(name==='scorecard')renderScorecard();
-  if(name==='debrief')renderDebrief();
-  if(name==='dashboard')renderOverviewTable();
-};
+window._endSession=window.endSession=async()=>{if(currentSessionCode)await window.nis2AdminTransport.setState(currentSessionCode,'finished',csrf());clearInterval(answerPoll);const dot=document.getElementById('status-dot'),lbl=document.getElementById('session-state');if(dot)dot.classList.remove('live');if(lbl)lbl.textContent='Afsluttet';};
+window._resetSession=window.resetSession=async()=>{if(!currentSessionCode||!confirm('Nulstil alle svar og gå til opstartsskærmen?'))return;clearInterval(totalTimerInterval);clearInterval(answerPoll);await window.nis2AdminTransport.reset(currentSessionCode,csrf());currentSessionCode=null;currentSessionId=null;currentRound=0;window.rawAnswers={};window.allAnswers={};document.getElementById('timer-total').textContent='00:00';showScreen('intro');updateDisplay();};
+function showScreen(name){document.getElementById('intro-screen').classList.toggle('active',name==='intro');document.getElementById('live-screen').classList.toggle('active',name==='live');}
+window.setRound=r=>{currentRound=Math.max(0,Math.min(ROUND_META.length-1,r));if(currentSessionCode)window.nis2AdminTransport.setRound(currentSessionCode,currentRound,csrf()).catch(e=>console.warn('NIS2 API:',e));pollAnswers();updateDisplay();};
+window.prevRound=()=>window.setRound(currentRound-1);window.nextRound=()=>window.setRound(currentRound+1);window._setRound=window.setRound;window._prevRound=window.prevRound;window._nextRound=window.nextRound;
+window.showView=name=>{['dashboard','chart','notes','scorecard','debrief'].forEach(v=>{document.getElementById('view-'+v).classList.toggle('active',v===name);document.getElementById('nav-'+v).classList.toggle('active',v===name);});if(name==='notes')renderNotes();if(name==='scorecard')renderScorecard();if(name==='debrief')renderDebrief();if(name==='dashboard')renderOverviewTable();};
 window._showView=window.showView;
-
-// Signal til stub-funktionerne at Firebase og alle handlers er klar
-window._fbReady=true;
-
 function updateDisplay(){
   const meta=ROUND_META[currentRound];
   if(!document.getElementById('current-round-label'))return;
@@ -916,10 +830,11 @@ document.addEventListener('DOMContentLoaded',function(){
   (function tryQR(n){
     if(window.QRCode){
       var el=document.getElementById('qrcode');
-      if(el&&!el.hasChildNodes()){new QRCode(el,{text:'https://Funclausen.github.io/nis2-simulation/',width:140,height:140,colorDark:'#3A646D',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
+      if(el&&!el.hasChildNodes()){new QRCode(el,{text:'https://hannestad.dk/private/nis2/',width:140,height:140,colorDark:'#3A646D',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
     } else if(n>0){setTimeout(function(){tryQR(n-1);},150);}
   })(20);
 });
+
 </script>
 </body>
 </html>
